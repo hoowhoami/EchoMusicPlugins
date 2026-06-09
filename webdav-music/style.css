@@ -1,0 +1,502 @@
+/* ===================================================================
+ * EchoMusic WebDAV Music Plugin - Styles
+ * 仿照主应用音乐列表界面设计
+ * =================================================================== */
+
+/* ---- Page Layout ---- */
+.webdav-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0 16px;
+  overflow: hidden;
+  color: var(--color-text-main);
+}
+
+/* ---- Toolbar ---- */
+.webdav-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  padding: 10px 0;
+  gap: 8px;
+}
+
+.webdav-toolbar-left,
+.webdav-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.webdav-count {
+  font-size: 13px;
+  color: var(--color-text-subtle);
+  white-space: nowrap;
+}
+
+/* ---- Buttons ---- */
+.webdav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border-light);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-main);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.webdav-btn:hover {
+  background: var(--color-bg-hover);
+  border-color: var(--color-border);
+}
+
+.webdav-btn:active {
+  transform: scale(0.97);
+}
+
+.webdav-btn-icon {
+  padding: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+}
+
+.webdav-btn-icon:hover {
+  background: var(--color-bg-hover);
+}
+
+.webdav-btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.webdav-btn-primary:hover {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+/* ---- Breadcrumb ---- */
+.webdav-breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  flex-shrink: 0;
+  padding: 2px 0 6px;
+  font-size: 13px;
+}
+
+.webdav-breadcrumb-item {
+  background: none;
+  border: none;
+  color: var(--color-text-subtle);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 13px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.webdav-breadcrumb-item:hover {
+  color: var(--color-text-main);
+  background: var(--color-bg-hover);
+}
+
+.webdav-breadcrumb-item:last-child {
+  color: var(--color-text-main);
+  font-weight: 600;
+}
+
+.webdav-breadcrumb-sep {
+  color: var(--color-text-disabled);
+  margin: 0 2px;
+  user-select: none;
+}
+
+/* ---- Content ---- */
+.webdav-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+}
+
+.webdav-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.webdav-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.webdav-content::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+/* ===================================================================
+ * Song List — 仿主应用 SongList 布局
+ * Grid: #(40px) | 歌曲(1fr) | 大小(80px)
+ * =================================================================== */
+
+/* ---- Header Row (仿 SongListHeader) ---- */
+.webdav-list-header {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 80px;
+  align-items: center;
+  height: 44px;
+  padding: 0 8px;
+  margin-bottom: 2px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-main);
+  opacity: 0.8;
+  border-bottom: 1px solid var(--color-border-light, var(--border-subtle));
+  flex-shrink: 0;
+}
+
+.webdav-list-header > div {
+  white-space: nowrap;
+}
+
+.webdav-list-header .webdav-col-index {
+  padding-left: 8px;
+}
+
+.webdav-list-header .webdav-col-song {
+  min-width: 0;
+}
+
+.webdav-list-header .webdav-col-size {
+  padding-left: 8px;
+}
+
+/* ---- Song Row (仿 song-list-row) ---- */
+.webdav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.webdav-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 80px;
+  align-items: center;
+  height: 56px;
+  padding: 0 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+  user-select: none;
+}
+
+.webdav-row:hover {
+  background: var(--color-bg-hover, rgba(128, 128, 128, 0.08));
+}
+
+.webdav-row.is-active {
+  background: var(--color-bg-hover, rgba(128, 128, 128, 0.12));
+}
+
+.webdav-row.webdav-row-dir {
+  cursor: pointer;
+}
+
+/* ---- Index Column ---- */
+.webdav-col-index {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: 8px;
+  position: relative;
+  width: 40px;
+  height: 40px;
+}
+
+.webdav-index-num {
+  font-size: 12px;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.webdav-row:hover .webdav-index-num {
+  opacity: 0;
+}
+
+.webdav-index-play {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity 0.15s;
+  color: var(--color-text-main);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.webdav-row:hover .webdav-index-play {
+  opacity: 1;
+}
+
+.webdav-index-active {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+}
+
+/* ---- Song Column (封面 + 歌曲信息) ---- */
+.webdav-col-song {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* 兜底封面图片 */
+.webdav-cover {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  background: var(--color-bg-surface, rgba(128, 128, 128, 0.1));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.webdav-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.webdav-cover svg {
+  opacity: 0.5;
+}
+
+.webdav-row-dir .webdav-cover {
+  background: var(--color-primary);
+}
+
+.webdav-folder-icon {
+  flex-shrink: 0;
+}
+
+.webdav-index-folder-play {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--color-text-main);
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.webdav-row:hover .webdav-index-folder-play {
+  opacity: 1;
+}
+
+.webdav-song-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.webdav-song-title {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-text-main);
+}
+
+.webdav-row.is-active .webdav-song-title {
+  color: var(--color-primary);
+}
+
+.webdav-song-artist {
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-text-secondary, var(--color-text-subtle));
+}
+
+.webdav-row.is-active .webdav-song-artist {
+  color: var(--color-primary);
+  opacity: 0.7;
+}
+
+/* ---- Size Column ---- */
+.webdav-col-size {
+  font-size: 12px;
+  opacity: 0.6;
+  text-align: left;
+  white-space: nowrap;
+  padding-left: 8px;
+}
+
+/* ---- State: Loading / Empty / Error ---- */
+.webdav-loading,
+.webdav-empty,
+.webdav-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+  text-align: center;
+  color: var(--color-text-subtle);
+  gap: 8px;
+}
+
+.webdav-empty-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-main);
+  margin: 0;
+}
+
+.webdav-empty-desc {
+  font-size: 13px;
+  margin: 0;
+  color: var(--color-text-subtle);
+}
+
+.webdav-error {
+  color: var(--color-danger);
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 560px) {
+  .webdav-row,
+  .webdav-list-header {
+    grid-template-columns: 32px minmax(0, 1fr) 60px;
+  }
+
+  .webdav-cover {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+  }
+}
+
+/* ---- About Page (设置 - 关于) ---- */
+.webdav-about {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--color-text-main);
+}
+
+.webdav-about h1 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  line-height: 1.3;
+}
+
+.webdav-about h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 22px 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.webdav-about h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 16px 0 4px;
+}
+
+.webdav-about p {
+  margin: 0 0 10px;
+  color: var(--color-text-main);
+}
+
+.webdav-about ul,
+.webdav-about ol {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+
+.webdav-about li {
+  margin-bottom: 4px;
+}
+
+.webdav-about code {
+  background: var(--color-bg-elevated);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: var(--font-mono, monospace);
+  border: 1px solid var(--color-border-light);
+}
+
+.webdav-about pre {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-light);
+  border-radius: 8px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  margin: 0 0 12px;
+}
+
+.webdav-about pre code {
+  background: none;
+  padding: 0;
+  border: none;
+  font-size: 12px;
+}
+
+.webdav-about table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 12px;
+  font-size: 12px;
+}
+
+.webdav-about th {
+  text-align: left;
+  padding: 6px 10px;
+  background: var(--color-bg-elevated);
+  border-bottom: 1px solid var(--color-border-light);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.webdav-about td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--color-border-light);
+  vertical-align: top;
+}
+
+.webdav-about blockquote {
+  border-left: 3px solid var(--color-primary);
+  margin: 0 0 12px;
+  padding: 6px 12px;
+  color: var(--color-text-subtle);
+  background: var(--color-bg-elevated);
+  border-radius: 0 6px 6px 0;
+  font-size: 12px;
+}
