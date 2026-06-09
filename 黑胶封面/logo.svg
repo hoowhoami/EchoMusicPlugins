@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
+  <defs>
+    <style>
+      .bg { fill: #ffffff; }
+      .vinyl-main { fill: #1d312e; }
+      .vinyl-ring { fill: none; stroke: #162522; stroke-width: 2.5; opacity: 0.35; }
+      .vinyl-center { fill: #f25f33; }
+      .vinyl-hole { fill: #fffcee; }
+      .text-large { font-family: "PingFang SC", "Microsoft YaHei", "SimHei", sans-serif; font-size: 82px; font-weight: 900; fill: #222524; letter-spacing: 4px; text-anchor: middle; }
+      .text-small { font-family: "Georgia", "Times New Roman", "SimSun", serif; font-size: 32px; font-weight: bold; fill: #1d2c2b; letter-spacing: 6px; text-anchor: middle; }
+    </style>
+  </defs>
+
+  <rect width="800" height="800" class="bg" />
+
+  <g id="vinyl-record">
+    <path d="M 200 375 A 200 200 0 0 1 600 375 Z" class="vinyl-main" />
+    
+    <path d="M 225 375 A 175 175 0 0 1 575 375" class="vinyl-ring" />
+    <path d="M 250 375 A 150 150 0 0 1 550 375" class="vinyl-ring" />
+    <path d="M 275 375 A 125 125 0 0 1 525 375" class="vinyl-ring" />
+    <path d="M 300 375 A 100 100 0 0 1 500 375" class="vinyl-ring" />
+    
+    <path d="M 335 375 A 65 65 0 0 1 465 375 Z" class="vinyl-center" />
+    
+    <path d="M 384 375 A 16 16 0 0 1 416 375 Z" class="vinyl-hole" />
+  </g>
+
+  <g id="typography">
+    <text x="402" y="510" class="text-large">黑胶唱片</text>
+    
+    <text x="404" y="575" class="text-small">BY吴彦祖</text>
+  </g>
+</svg>
