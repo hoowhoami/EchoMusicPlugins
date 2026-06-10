@@ -1,0 +1,18 @@
+{
+  "name": "广告系统插件源",
+  "homepage": "https://github.com/ZHCOOL520",
+  "plugins": [
+    {
+      "id": "echo-ad-system",
+      "name": "广告系统",
+      "version": "1.4.0",
+      "description": "开屏广告 + 播放中插播广告 + 启动音效，支持 Bing 每日壁纸、自定义图片与弹窗时间。",
+      "author": "ZHCOOL520",
+      "path": "echo-ad-system",
+      "repo": "https://github.com/hoowhoami/EchoMusicPlugins",
+      "homepage": "https://github.com/ZHCOOL520",
+      "tags": ["ad", "monetization", "bing-wallpaper"],
+      "requires": {}
+    }
+  ]
+}
