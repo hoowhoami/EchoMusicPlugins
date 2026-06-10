@@ -137,6 +137,21 @@
       "requires": {
         "echoMusicVersion": ">=2.2.6-beta.10"
       }
+      {
+      "id": "echo-ad-system",
+      "name": "广告系统插件",
+      "version": "1.0.0",
+      "description": "EchoMusic 广告系统插件",
+      "author": "ZHCOOL520",
+      "icon": "icon.svg",
+      "path": "echo-ad-system",
+      "repo": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/echo-ad-system",
+      "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/echo-ad-system",
+      "tags": ["ad", "system"],
+      "requires": {
+      "echoMusicVersion": ">=2.2.5"
+      }
+      }
     }
   ]
 }

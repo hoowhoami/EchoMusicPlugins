@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#6C5CE7"/>
+      <stop offset="50%" stop-color="#A855F7"/>
+      <stop offset="100%" stop-color="#EC4899"/>
+    </linearGradient>
+    <linearGradient id="note" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FDE68A"/>
+      <stop offset="100%" stop-color="#F97316"/>
+    </linearGradient>
+    <linearGradient id="ad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E0E7FF"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- 圆角背景 -->
+  <rect width="128" height="128" rx="30" fill="url(#bg)"/>
+
+  <!-- 内部磨砂玻璃面板 -->
+  <rect x="8" y="8" width="112" height="112" rx="24" fill="white" fill-opacity="0.08"/>
+
+  <!-- 装饰光斑 -->
+  <circle cx="98" cy="26" r="20" fill="white" fill-opacity="0.08"/>
+  <circle cx="22" cy="105" r="14" fill="white" fill-opacity="0.06"/>
+
+  <!-- AD 文字 -->
+  <text x="64" y="60" text-anchor="middle" font-family="system-ui, -apple-system, 'SF Pro Display', sans-serif" font-size="38" font-weight="900" letter-spacing="-2" fill="url(#ad)" filter="url(#glow)">AD</text>
+
+  <!-- 音符图标 -->
+  <g transform="translate(70, 68)" filter="url(#glow)">
+    <path d="M18 2v28a7 7 0 1 1-3.5-6.06V6L32.5 3v24a7 7 0 1 1-3.5-6.06V0L18 2z" fill="url(#note)" opacity="0.95"/>
+  </g>
+
+  <!-- 播放按钮小图标 -->
+  <circle cx="28" cy="28" r="12" fill="white" fill-opacity="0.15"/>
+  <path d="M25 22l10 6-10 6V22z" fill="white" fill-opacity="0.9"/>
+
+  <!-- 底部装饰线 -->
+  <rect x="24" y="112" width="80" height="2" rx="1" fill="white" fill-opacity="0.12"/>
+</svg>

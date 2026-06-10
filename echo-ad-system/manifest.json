@@ -1,0 +1,21 @@
+{
+  "id": "echo-ad-system",
+  "name": "广告系统",
+  "version": "2.0.0",
+  "description": "开屏广告 + 播放中插播广告 + 启动音效，支持 Bing 每日壁纸、自定义图片与弹窗时间。",
+  "author": "ZHCOOL520",
+  "icon": "icon.svg",
+  "main": "index.js",
+  "style": "style.css",
+  "runtime": {
+    "miniPlayer": false,
+    "desktopLyric": false
+  },
+  "capabilities": {
+    "audioSource": false,
+    "kugouApi": false,
+    "lyrics": false,
+    "process": false
+  },
+  "requires": {}
+}
