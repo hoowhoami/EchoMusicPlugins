@@ -1,0 +1,38 @@
+{
+  "id": "dynamic-island-lyric",
+  "name": "灵动岛歌词",
+  "version": "1.0.0",
+  "description": "在桌面顶部显示一个灵动岛式悬浮歌词胶囊，支持封面、播放控制、副歌词和透明穿透。",
+  "author": "EchoMusic",
+  "icon": "icon.svg",
+  "main": "index.js",
+  "requires": {
+    "echoMusicVersion": ">=2.2.6-beta.21"
+  },
+  "contributes": {
+    "windows": [
+      {
+        "id": "island",
+        "type": "floating",
+        "title": "灵动岛歌词",
+        "main": "island.js",
+        "style": "island.css",
+        "defaultWidth": 260,
+        "defaultHeight": 48,
+        "minWidth": 180,
+        "minHeight": 40,
+        "maxWidth": 460,
+        "maxHeight": 172,
+        "position": "top-center",
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "movable": true,
+        "rememberBounds": true,
+        "allowOutsideWorkArea": true,
+        "acceptFirstMouse": true
+      }
+    ]
+  }
+}

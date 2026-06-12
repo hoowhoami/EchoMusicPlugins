@@ -3,6 +3,17 @@
   "homepage": "https://github.com/hoowhoami/EchoMusicPlugins",
   "plugins": [
     {
+      "id": "dynamic-island-lyric",
+      "path": "dynamic-island-lyric",
+      "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/dynamic-island-lyric",
+      "tags": [
+        "lyrics",
+        "floating-window",
+        "now-playing",
+        "desktop"
+      ]
+    },
+    {
       "id": "water-lyrics",
       "path": "water-lyrics",
       "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/water-lyrics",
