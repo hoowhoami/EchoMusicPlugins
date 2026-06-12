@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+    <defs>
+        <linearGradient id="bgBase" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#FF5B6B"/>
+            <stop offset="100%" stop-color="#1A8DF5"/>
+        </linearGradient>
+        
+        <linearGradient id="bgOverlay" x1="100%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#FF83A4" stop-opacity="0.9"/>
+            <stop offset="50%" stop-color="#A439C9" stop-opacity="0"/>
+            <stop offset="100%" stop-color="#5B1BD8" stop-opacity="0.95"/>
+        </linearGradient>
+
+        <linearGradient id="waveGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#FFFFFF"/>
+            <stop offset="100%" stop-color="#E2E8F0"/>
+        </linearGradient>
+
+        <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#000000" flood-opacity="0.25"/>
+            <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000000" flood-opacity="0.15"/>
+        </filter>
+    </defs>
+
+    <rect width="512" height="512" rx="115" fill="url(#bgBase)"/>
+    <rect width="512" height="512" rx="115" fill="url(#bgOverlay)"/>
+
+    <g filter="url(#dropShadow)">
+        <path d="M 90,256 
+                 L 131,256 
+                 C 146,256 146,160 161,160 
+                 C 181,160 181,330 201,330 
+                 C 226,330 226,100 251,100 
+                 C 276,100 276,400 301,400 
+                 C 321,400 321,140 341,140 
+                 C 361,140 361,256 381,256 
+                 L 422,256"
+              fill="none" stroke="url(#waveGrad)" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+              
+        <path d="M 90,256 
+                 L 131,256 
+                 C 146,256 146,160 161,160 
+                 C 181,160 181,330 201,330 
+                 C 226,330 226,100 251,100 
+                 C 276,100 276,400 301,400 
+                 C 321,400 321,140 341,140 
+                 C 361,140 361,256 381,256 
+                 L 422,256"
+              transform="translate(0, -3)" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>
+              
+        <path d="M 90,256 
+                 L 131,256 
+                 C 146,256 146,160 161,160 
+                 C 181,160 181,330 201,330 
+                 C 226,330 226,100 251,100 
+                 C 276,100 276,400 301,400 
+                 C 321,400 321,140 341,140 
+                 C 361,140 361,256 381,256 
+                 L 422,256"
+              transform="translate(0, -6)" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="1"/>
+    </g>
+</svg>
