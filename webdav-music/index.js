@@ -46,6 +46,9 @@ let _sortOrder = null; // 'asc' | 'desc' | null
 /** 模块级歌词缓存：songId → lyric text，供歌词解析器使用 */
 const _enrichedLyrics = new Map();
 
+/** 模块级 enrichment 追踪：songId → Promise，供歌词解析器等待 */
+const _pendingEnrichment = new Map();
+
 
 /* ===================================================================
  * Cover Fallback — 跟随主应用兜底封面机制
@@ -1411,8 +1414,7 @@ const createBrowserPage = (ctx, state) => {
         if (!song) return;
         enrichSong(song).catch(() => {});
         try {
-          await ctx.stores.playlist.setPlaybackQueueWithOptions([song], 0, { title: song.title || "WebDAV", type: "manual", activate: true });
-          await ctx.stores.player.playTrack(song.id, [song], { sourceQueueId: ctx.stores.playlist.activeQueueId });
+          await ctx.player.replaceQueueAndPlay([song]);
         } catch (err) { ctx.toast.danger("播放失败"); }
       };
 
@@ -1420,20 +1422,15 @@ const createBrowserPage = (ctx, state) => {
         let song = createSong(entry, currentPath.value);
         if (!song) return;
         enrichSong(song).catch(() => {});
-        const playlist = ctx.stores.playlist;
-        const player = ctx.stores.player;
         const replace = ctx.stores.settings?.replacePlaylist;
         try {
           if (replace) {
-            const allSongs = getSongs();
-            await playlist.setPlaybackQueueWithOptions(allSongs, 0, { title: currentPath.value.split("/").filter(Boolean).pop() || "WebDAV", type: "manual", activate: true });
-            await player.playTrack(song.id, allSongs, { sourceQueueId: playlist.activeQueueId });
+            await ctx.player.replaceQueueAndPlay(getSongs());
           } else {
-            const activeQueue = playlist.activeQueue;
+            const activeQueue = ctx.playlist.activeQueue;
             let queueSongs = activeQueue?.songs?.length > 0 ? [...activeQueue.songs] : [];
             if (!queueSongs.some((s) => String(s.id) === String(song.id))) queueSongs.push(song);
-            await playlist.setPlaybackQueueWithOptions(queueSongs, 0, { title: activeQueue?.title || "我的队列", type: activeQueue?.type || "manual", activate: true });
-            await player.playTrack(song.id, queueSongs, { sourceQueueId: playlist.activeQueueId });
+            await ctx.player.replaceQueueAndPlay(queueSongs);
           }
         } catch (err) { ctx.toast.danger("播放失败"); }
       };
@@ -1443,8 +1440,7 @@ const createBrowserPage = (ctx, state) => {
         if (songs.length === 0) return;
         enrichSong(songs[0]).catch(() => {});
         try {
-          await ctx.stores.playlist.setPlaybackQueueWithOptions(songs, 0, { title: currentPath.value.split("/").filter(Boolean).pop() || "WebDAV", type: "manual", activate: true });
-          await ctx.stores.player.playTrack(songs[0].id, songs, { sourceQueueId: ctx.stores.playlist.activeQueueId });
+          await ctx.player.replaceQueueAndPlay(songs);
         } catch (err) { ctx.toast.danger("播放失败"); }
       };
 
@@ -1464,8 +1460,7 @@ const createBrowserPage = (ctx, state) => {
         const songs = files.map((entry) => createSongObject(entry.name, normDir + entry.name, { album: folderName, coverUrl, libraryId: lib.id }));
         enrichSong(songs[0]).catch(() => {});
         try {
-          await ctx.stores.playlist.setPlaybackQueueWithOptions(songs, 0, { title: folderName, type: "manual", activate: true });
-          await ctx.stores.player.playTrack(songs[0].id, songs, { sourceQueueId: ctx.stores.playlist.activeQueueId });
+          await ctx.player.replaceQueueAndPlay(songs);
         } catch (err) { ctx.toast.danger("播放失败"); }
       };
 
@@ -1763,9 +1758,9 @@ export async function activate(ctx) {
       if (!trackId) return;
       const track = ctx.player.currentTrack;
       if (!track || track.source !== "webdav" || !track._filePath) return;
-      enrichTrack(ctx, state, track).catch(
-        (err) => console.error("[webdav-music] enrichTrack failed:", err),
-      );
+      const promise = enrichTrack(ctx, state, track).catch(() => {});
+      _pendingEnrichment.set(String(trackId), promise);
+      promise.finally(() => _pendingEnrichment.delete(String(trackId)));
     },
     { immediate: true },
   );
@@ -1778,10 +1773,21 @@ export async function activate(ctx) {
       const track = context.track;
       return track?.source === "webdav" && !!track?._filePath;
     },
-    resolve: (context) => {
+    resolve: async (context) => {
       const hash = context.hash;
+      // 如果缓存已有歌词，直接返回
       const cached = _enrichedLyrics.get(hash);
       if (cached) return { decodeContent: cached };
+      // 等待 enrichment 完成（最多 3 秒）
+      const pending = _pendingEnrichment.get(hash);
+      if (pending) {
+        await Promise.race([
+          pending,
+          new Promise((r) => setTimeout(r, 3000)),
+        ]);
+        const result = _enrichedLyrics.get(hash);
+        if (result) return { decodeContent: result };
+      }
       return null;
     },
   });
