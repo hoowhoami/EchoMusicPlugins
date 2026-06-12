@@ -1,7 +1,7 @@
 {
   "id": "echomusic-vinyl-rotation",
   "name": "黑胶唱片旋转封面",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "让歌词页面的专辑封面变成圆形，并随音乐播放不断匀速旋转",
   "author": "吴彦祖",
   "main": "index.js",
