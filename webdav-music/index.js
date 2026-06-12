@@ -49,6 +49,9 @@ const _enrichedLyrics = new Map();
 /** 模块级 enrichment 追踪：songId → Promise，供歌词解析器等待 */
 const _pendingEnrichment = new Map();
 
+/** 模块级库配置缓存：songId → library，供封面获取使用 */
+const _songLibraryCache = new Map();
+
 
 /* ===================================================================
  * Cover Fallback — 跟随主应用兜底封面机制
@@ -74,60 +77,62 @@ let _bcChannel = null;
  * 解决：通过 Canvas 将任意图片格式转换为 JPEG data URL，
  *      主进程可直接 fetch，native addon 也能快速处理（JPEG 直达路径）。
  */
-const convertCoverForSmtc = async (url) => {
-  if (!url) return url;
+const convertCoverForSmtc = async (input, authHeader) => {
+  if (!input) return input;
 
-  // 已经是 JPEG data URL：直接使用，native addon 有 JPEG 快速路径
-  if (/^data:image\/jpeg/.test(url)) return url;
+  // Uint8Array：直接转 base64 data URL
+  if (input instanceof Uint8Array) {
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(new Blob([input], { type: "image/jpeg" }));
+    });
+  }
 
-  // 超时时间（毫秒）
+  // 已经是 JPEG data URL：直接使用
+  if (/^data:image\/jpeg/.test(input)) return input;
+
+  // URL：通过 fetch + Authorization header 获取图片数据
+  // 浏览器 <img> 和 fetch 不支持 URL 内嵌凭证（user:pass@host）
+  if (typeof input === "string" && authHeader) {
+    try {
+      const res = await fetch(input, { headers: { Authorization: authHeader } });
+      if (res.ok) {
+        const blob = await res.blob();
+        return await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
+    } catch {}
+  }
+
+  // 其他 URL：通过 Canvas 转 JPEG data URL
   const TIMEOUT_MS = 5000;
-
   try {
     const img = new Image();
     img.crossOrigin = 'anonymous';
-
     await Promise.race([
       new Promise((resolve, reject) => {
         img.onload = resolve;
         img.onerror = () => reject(new Error('Image load failed'));
-        img.src = url;
+        img.src = input;
       }),
-      new Promise((_, reject) => 
+      new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Image load timeout')), TIMEOUT_MS)
       )
     ]);
-
     const canvas = document.createElement('canvas');
     canvas.width = img.width;
     canvas.height = img.height;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0);
-
-    const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.92);
-    console.log(
-      '[webdav-music] SMTC cover converted to JPEG:',
-      'original:', url?.substring(0, 60),
-      'size:', jpegDataUrl?.length,
-    );
-    return jpegDataUrl;
-  } catch (e) {
-    console.warn('[webdav-music] SMTC cover conversion failed, trying fetch fallback:', e);
-    // 尝试使用 fetch 获取 blob，然后转换为 data URL
-    try {
-      const response = await fetch(url, { mode: 'cors' });
-      if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
-      const blob = await response.blob();
-      return await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    } catch (fetchError) {
-      console.warn('[webdav-music] Fetch fallback also failed, returning original URL:', fetchError);
-      return url;
-    }
+    return canvas.toDataURL('image/jpeg', 0.92);
+  } catch {
+    return input;
   }
 };
 
@@ -319,10 +324,13 @@ const syncToStores = (ctx, songId, patch) => {
       // 4) 元数据充实后同步刷新 Windows SMTC
       const snapshotForSmtc = player.currentTrackSnapshot;
       if (snapshotForSmtc && window.electron?.mediaControls) {
+        // 获取库配置以构建 Authorization header
+        const lib = _songLibraryCache.get(sid);
+        const authHeader = lib ? buildAuthHeader(lib) : null;
         const rawCoverUrl = patch.coverUrl || snapshotForSmtc.coverUrl || snapshotForSmtc.cover || _fallbackCoverUrlRef.value;
         (async () => {
           try {
-            const coverUrl = await convertCoverForSmtc(rawCoverUrl);
+            const coverUrl = await convertCoverForSmtc(rawCoverUrl, authHeader);
             window.electron.mediaControls.updateMetadata({
               title: snapshotForSmtc.title || "未知歌曲",
               artist: snapshotForSmtc.artist || "未知歌手",
@@ -483,6 +491,8 @@ const enrichTrack = async (ctx, state, song) => {
     console.log("[webdav-music] enrichTrack: no library found for song");
     return song;
   }
+  // 缓存库配置供 SMTC 封面获取使用
+  _songLibraryCache.set(String(song.id), lib);
 
   // 检测音频音质（异步，不阻塞后续 enrich）
   detectAndSetQuality(ctx, { settings: lib }, song).catch(
