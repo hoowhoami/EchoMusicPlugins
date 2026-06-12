@@ -877,61 +877,6 @@ const ABOUT_HTML = `<div class="webdav-about">
 <h2>依赖</h2>
 <p>EchoMusic &gt;= 2.2.6-beta.11</p>
 
-<h2>更新日志</h2>
-<h3>v1.1.2</h3>
-<ul>
-<li>修复切换上一首/下一首时无法显示封面和歌词的问题</li>
-<li>修复随机模式下点击播放全部始终播放第一首歌的问题</li>
-<li>修复搜索优先模式下酷狗 API 被错误跳过导致无封面的问题</li>
-<li>修复封面图片 401/SSL 错误，改用 fetch + Authorization header 获取</li>
-<li>注册歌词解析器（ctx.lyrics.registerResolver），解决 fetchLyrics 覆盖歌词的时序问题</li>
-<li>使用主应用高级 API（ctx.player / ctx.playlist）简化播放逻辑</li>
-<li>清理冗余 console.log 调试日志</li>
-</ul>
-<h3>v1.1.1</h3>
-<ul>
-<li>修复设置页重置/保存按钮随内容滚动的问题，按钮固定在页面底部</li>
-</ul>
-<h3>v1.0.6</h3>
-<ul>
-<li>代码重构：提取 buildPatchFromSource 统一内嵌标签和酷狗 API 的 patch 构建逻辑</li>
-<li>代码重构：提取 detectAudioQuality 统一音质检测逻辑，消除重复代码</li>
-<li>优化 enrichFromKugouApi 函数结构，提高可读性</li>
-</ul>
-<h3>v1.0.5</h3>
-<ul>
-<li>新增「在线匹配封面歌词」开关设置，支持切换封面和歌词获取模式</li>
-<li>修复 Windows SMTC（系统媒体浮窗）封面显示不稳定的问题</li>
-<li>优化酷狗 API 调用逻辑：避免在歌曲已有内嵌封面和歌词时发起不必要的搜索请求</li>
-<li>修复手动排序方式在切换目录后被重置的问题，排序状态在应用关闭前持续保持</li>
-</ul>
-<h3>v1.0.4</h3>
-<ul>
-<li>歌曲列表支持点击「#」「歌曲」「大小」表头进行排序，文件夹始终置顶不参与排序</li>
-<li>右键菜单功能：歌曲和文件夹支持右键「立即播放」和「下一首播放」</li>
-<li>修复点击播放按钮或右键「立即播放」时替换整个播放列表的问题</li>
-<li>修复右键「下一首播放」无效的问题</li>
-</ul>
-<h3>v1.0.3</h3>
-<ul>
-<li>修复上一首/下一首切歌及重启应用后恢复播放时无法自动获取歌曲元数据的问题</li>
-<li>主应用最低版本要求更新到 &gt;=2.2.6-beta.11</li>
-</ul>
-<h3>v1.0.2</h3>
-<ul>
-<li>设置页面新增「关于」标签页，展示 README 内容</li>
-</ul>
-<h3>v1.0.1</h3>
-<ul>
-<li>接入主应用音频源解析 API（audioSource），播放时动态构造带认证 URL</li>
-<li>修复 Windows SMTC 封面显示：嵌入封面 / SVG 兜底封面自动通过 Canvas 转为 JPEG</li>
-<li>优化代码结构：统一歌曲对象构建逻辑、提取公共路径规范化函数</li>
-</ul>
-<h3>v1.0.0</h3>
-<ul>
-<li>初始版本</li>
-</ul>
-
 <h2>作者</h2>
 <p>Oneday5799</p>
 </div>`;
