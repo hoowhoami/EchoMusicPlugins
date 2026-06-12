@@ -354,18 +354,9 @@ const syncToStores = (ctx, songId, patch) => {
   }
 };
 
-/**
- * 从歌曲对象构建 patch（统一内嵌标签和酷狗 API 的 patch 构建逻辑）
- * @param {Object} song - 歌曲对象
- * @param {Object} source - 数据源（tags 或 kugou match）
- * @param {string} sourceType - 数据源类型 'embedded' | 'kugou'
- * @returns {Object} patch 对象
- */
 const buildPatchFromSource = (song, source, sourceType) => {
   const patch = {};
-  
   if (sourceType === 'embedded') {
-    // 从内嵌标签构建 patch
     if (source.title) { song.title = source.title; song.name = source.title; patch.title = source.title; patch.name = source.title; }
     if (source.artist) { song.artist = source.artist; song.artists = [{ name: source.artist }]; song.singers = [{ name: source.artist }]; patch.artist = source.artist; patch.artists = [{ name: source.artist }]; patch.singers = [{ name: source.artist }]; }
     if (source.album) { song.album = source.album; song.albumName = source.album; patch.album = source.album; patch.albumName = source.album; }
@@ -392,7 +383,6 @@ const buildPatchFromSource = (song, source, sourceType) => {
  */
 const enrichFromKugouApi = async (ctx, song) => {
   if (!song || !song.title || !ctx.kugou) return;
-  // 如果歌曲已有有效封面（HTTP URL，非 Blob URL）和歌词，跳过 API 查询
   const hasValidCover = song.coverUrl && /^https?:\/\//.test(song.coverUrl);
   if (hasValidCover && song.lyric) return;
   const artist = song.artist || "";
@@ -400,12 +390,8 @@ const enrichFromKugouApi = async (ctx, song) => {
   const keyword = artist && artist !== "未知歌手" ? `${artist} ${title}` : title;
   try {
     const result = await ctx.kugou.search.search(keyword, "song", 1, 5);
-    const data = result?.data;
-    const lists = data?.lists || data?.list || [];
-    if (!lists.length) {
-      console.log("[webdav-music] enrichFromKugouApi no results for:", keyword);
-      return;
-    }
+    const lists = result?.data?.lists || result?.data?.list || [];
+    if (!lists.length) return;
     const match = lists[0];
     if (!match) return;
     const hasValidCoverAfterSearch = song.coverUrl && /^https?:\/\//.test(song.coverUrl);
@@ -414,8 +400,6 @@ const enrichFromKugouApi = async (ctx, song) => {
     const coverUrl = formatPicUrl(match.Image || match.trans_param?.union_cover || match.cover || "");
     const albumName = match.AlbumName || "";
     const matchSinger = match.SingerName || "";
-    const matchTitle = match.SongName || match.FileName || match.OriSongName || "";
-    
     const kugouData = { coverUrl, albumName, matchSinger, lyricText: "" };
     if (fileHash && !song.lyric) {
       try {
@@ -423,28 +407,14 @@ const enrichFromKugouApi = async (ctx, song) => {
         const candidates = lyricResult?.candidates || lyricResult?.data?.candidates || [];
         const first = candidates[0];
         if (first?.id && first?.accesskey) {
-          const lyricDetail = await ctx.kugou.music.getLyric(
-            String(first.id),
-            String(first.accesskey)
-          );
+          const lyricDetail = await ctx.kugou.music.getLyric(String(first.id), String(first.accesskey));
           const lyricText = lyricDetail?.decodeContent || lyricDetail?.content || lyricDetail?.data?.content;
-          if (lyricText) {
-            kugouData.lyricText = lyricText;
-          }
+          if (lyricText) kugouData.lyricText = lyricText;
         }
-      } catch (lyricErr) {
-        console.warn("[webdav-music] Kugou lyric fetch failed:", lyricErr.message);
-      }
+      } catch {}
     }
-    
-    // 同步到 stores
     const patch = buildPatchFromSource(song, kugouData, 'kugou');
-    if (Object.keys(patch).length > 0) {
-      syncToStores(ctx, song.id, patch);
-      console.log("[webdav-music] enrichFromKugouApi applied:", Object.keys(patch), "title:", matchTitle);
-    } else {
-      console.log("[webdav-music] enrichFromKugouApi no usable data for:", keyword);
-    }
+    if (Object.keys(patch).length > 0) syncToStores(ctx, song.id, patch);
   } catch (err) {
     console.warn("[webdav-music] enrichFromKugouApi failed:", err.message);
   }
@@ -460,66 +430,31 @@ const enrichFromKugouApi = async (ctx, song) => {
  */
 const enrichTrack = async (ctx, state, song) => {
   if (!song._filePath) return song;
-  console.log("[webdav-music] enrichTrack started for:", song._filePath);
-
-  // 查找库配置
   const settings = state?.settings;
   let lib = null;
   if (song._libraryId && settings?.libraries) {
     lib = settings.libraries.find((l) => l.id === song._libraryId);
   }
-  if (!lib && settings?.libraries?.length > 0) {
-    lib = settings.libraries[0];
-  }
-  if (!lib) {
-    console.log("[webdav-music] enrichTrack: no library found for song");
-    return song;
-  }
-  // 缓存库配置供 SMTC 封面获取使用
+  if (!lib && settings?.libraries?.length > 0) lib = settings.libraries[0];
+  if (!lib) return song;
   _songLibraryCache.set(String(song.id), lib);
-
-  // 检测音频音质（异步，不阻塞后续 enrich）
-  detectAndSetQuality(ctx, { settings: lib }, song).catch(
-    (err) => console.warn("[webdav-music] detectAndSetQuality failed:", err.message),
-  );
+  detectAndSetQuality(ctx, { settings: lib }, song).catch(() => {});
 
   const coverLyricSource = settings.coverLyricSource || "embedded";
-  
   if (coverLyricSource === "kugou") {
-    // 酷狗优先：先调用酷狗API
-    console.log("[webdav-music] enrichTrack mode: kugou first");
     await enrichFromKugouApi(ctx, song);
-    // 然后读取内嵌标签，只补充酷狗API没有的字段
     const tags = await readEmbeddedTags(ctx, lib, song._filePath);
     if (tags) {
-      console.log("[webdav-music] Embedded tags (kugou mode):", "title:", !!tags.title, "artist:", !!tags.artist, "album:", !!tags.album, "cover:", !!tags.coverData, "lyric:", !!tags.lyric, "duration:", tags.duration);
       const patch = buildPatchFromSource(song, tags, 'embedded');
-      if (Object.keys(patch).length > 0) {
-        syncToStores(ctx, song.id, patch);
-        console.log("[webdav-music] enrichTrack (kugou mode) applied embedded patch:", Object.keys(patch));
-      }
+      if (Object.keys(patch).length > 0) syncToStores(ctx, song.id, patch);
     }
   } else {
-    // 内嵌优先：当前逻辑
-    console.log("[webdav-music] enrichTrack mode: embedded first");
     const tags = await readEmbeddedTags(ctx, lib, song._filePath);
-    if (!tags) {
-      // 嵌入标签解析失败时，启动 Kugou API 补全
-      console.log("[webdav-music] enrichTrack no embedded tags, calling enrichFromKugouApi");
-      await enrichFromKugouApi(ctx, song);
-      console.log("[webdav-music] enrichTrack done:", song._filePath);
-      return song;
-    }
-    console.log("[webdav-music] Embedded tags:", "title:", !!tags.title, "artist:", !!tags.artist, "album:", !!tags.album, "cover:", !!tags.coverData, "lyric:", !!tags.lyric, "duration:", tags.duration);
+    if (!tags) { await enrichFromKugouApi(ctx, song); return song; }
     const patch = buildPatchFromSource(song, tags, 'embedded');
     syncToStores(ctx, song.id, patch);
-    // 嵌入标签有内容但缺少封面或歌词，启动 Kugou API 补全
-    if (!tags.coverData || !tags.lyric) {
-      console.log("[webdav-music] enrichTrack missing cover or lyric, calling enrichFromKugouApi");
-      await enrichFromKugouApi(ctx, song);
-    }
+    if (!tags.coverData || !tags.lyric) await enrichFromKugouApi(ctx, song);
   }
-  console.log("[webdav-music] enrichTrack done:", song._filePath);
   return song;
 };
 
@@ -569,17 +504,9 @@ const detectAudioQuality = async (settings, filePath) => {
 const detectAndSetQuality = async (ctx, state, song) => {
   if (!state?.settings || !song._filePath || !ctx.stores?.player) return;
   const quality = await detectAudioQuality(state.settings, song._filePath);
-  if (!quality) {
-    console.log("[webdav-music] Could not detect quality for:", song._filePath);
-    return;
-  }
-  console.log("[webdav-music] Detected quality:", quality, "for", song._filePath);
-  // 延迟到下一轮事件循环再写入，确保在 playTrack 的
-  // currentResolvedAudioQuality = null (playback.ts:182) 和
-  // currentAudioQualityOverride = null (playback.ts:239) 之后最终写入正确值
+  if (!quality) return;
   await new Promise((resolve) => setTimeout(resolve, 0));
   ctx.stores.player.currentResolvedAudioQuality = quality;
-  // 锁定音质覆盖，防止用户通过 UI 切换
   ctx.stores.player.currentAudioQualityOverride = quality;
 };
 
@@ -1319,28 +1246,14 @@ const createBrowserPage = (ctx, state) => {
               } catch {}
             }
             const songs = files.map((entry) => createSongObject(entry.name, folderPath + entry.name, { album: folderName, coverUrl, libraryId: lib.id }));
-            const added = ctx.stores.playlist.appendToPlaybackQueue?.(songs) ?? 0;
-            if (added > 0) ctx.toast.success(`已添加 ${added} 首到队列`);
-            else ctx.toast.info("歌曲已在队列中");
+            ctx.playlist.append(songs);
+            ctx.toast.success(`已添加 ${songs.length} 首到队列`);
           } catch (err) { ctx.toast.danger("读取文件夹失败"); }
         } else {
           const song = createSong(ctxMenu.entry, currentPath.value);
-          const playlist = ctx.stores.playlist;
-          const player = ctx.stores.player;
-          const currentList = player.currentPlaylist ?? [];
-          if (currentList.length === 0) { await playSong(ctxMenu.entry); return; }
-          const currentTrackId = String(player.currentTrackId ?? '');
-          if (String(song.id) === currentTrackId) { ctx.toast.info("当前正在播放此歌曲"); return; }
-          const list = currentList.slice();
-          const currentIndex = list.findIndex((item) => String(item.id) === currentTrackId);
-          let insertIndex = currentIndex >= 0 ? currentIndex + 1 : list.length;
-          const existingIndex = list.findIndex((item) => String(item.id) === song.id);
-          if (existingIndex !== -1) { list.splice(existingIndex, 1); if (currentIndex > existingIndex) insertIndex = Math.max(0, insertIndex - 1); }
-          insertIndex = Math.max(0, Math.min(insertIndex, list.length));
-          list.splice(insertIndex, 0, song);
-          await playlist.setPlaybackQueueWithOptions(list, 0, { type: "manual", activate: false });
-          playlist.enqueuePlayNext(song.id);
-          playlist.store?.syncQueuedNextTrackIds?.();
+          if (!song) return;
+          if (String(song.id) === String(ctx.player.currentTrackId ?? '')) { ctx.toast.info("当前正在播放此歌曲"); return; }
+          ctx.playlist.playNext(song);
           ctx.toast.success(`已添加「${song.title}」到下一首`);
         }
       };
@@ -1738,8 +1651,6 @@ const createBrowserPage = (ctx, state) => {
 let state = null;
 
 export async function activate(ctx) {
-  console.log("[webdav-music] activate, ctx.electron:", !!ctx.electron, "ctx.electron.api:", !!(ctx.electron && ctx.electron.api), "ctx.stores:", !!ctx.stores);
-  // 全局未捕获 Promise 拒绝捕获，避免静默失败
   const _unhandledHandler = (event) => {
     console.error("[webdav-music] Unhandled rejection:", event.reason);
   };
@@ -1748,7 +1659,6 @@ export async function activate(ctx) {
   const saved = await ctx.storage.get(STORAGE_KEY);
   state = ctx.vue.reactive({ settings: normalizeSettings(saved) });
 
-  // 注册自定义音源解析器：播放时动态构造带认证的 WebDAV URL，并检测音质
   ctx.player.audioSource.register({
     id: "webdav",
     match: (context) => context.track.source === "webdav" && !!context.track._filePath,
@@ -1757,15 +1667,9 @@ export async function activate(ctx) {
       if (!settings) return null;
       const track = context.track;
       const filePath = track._filePath;
-      // 查找库配置
       let lib = null;
-      if (track._libraryId) {
-        lib = settings.libraries?.find((l) => l.id === track._libraryId);
-      }
-      // 向后兼容：如果没有 libraryId，使用第一个库
-      if (!lib && settings.libraries?.length > 0) {
-        lib = settings.libraries[0];
-      }
+      if (track._libraryId) lib = settings.libraries?.find((l) => l.id === track._libraryId);
+      if (!lib && settings.libraries?.length > 0) lib = settings.libraries[0];
       if (!lib) return null;
       const url = buildAuthUrl(lib, filePath);
       const quality = await detectAudioQuality(lib, filePath);
@@ -1774,28 +1678,21 @@ export async function activate(ctx) {
     },
   });
 
-  // 监听播放器切歌，自动为 webdav 音轨充实嵌入标签元数据
-  // 覆盖三种场景：浏览页双击播放、上一首/下一首切歌、重启应用后恢复播放
   ctx.vue.watch(
-    () => ctx.stores.player.currentTrackId,
+    () => ctx.player.currentTrackId,
     (trackId) => {
       if (!trackId) return;
-      const track = ctx.stores.player.currentTrackSnapshot;
+      const track = ctx.player.currentTrack;
       if (!track || track.source !== "webdav" || !track._filePath) return;
       const sid = String(trackId);
       if (_pendingEnrichment.has(sid)) return;
-      console.log("[webdav-music] Track changed, enriching:", track._filePath);
-      const promise = enrichTrack(ctx, state, track).catch(
-        (err) => console.error("[webdav-music] enrichTrack failed:", err),
-      );
+      const promise = enrichTrack(ctx, state, track).catch(() => {});
       _pendingEnrichment.set(sid, promise);
       promise.finally(() => _pendingEnrichment.delete(sid));
     },
     { immediate: true },
   );
 
-  // 注册歌词解析器：主应用获取歌词时优先调用此解析器
-  // 解决 fetchLyrics 异步覆盖插件注入歌词的时序问题
   ctx.lyrics.registerResolver({
     id: "webdav-embedded",
     match: (context) => {
@@ -1804,16 +1701,11 @@ export async function activate(ctx) {
     },
     resolve: async (context) => {
       const hash = context.hash;
-      // 如果缓存已有歌词，直接返回
       const cached = _enrichedLyrics.get(hash);
       if (cached) return { decodeContent: cached };
-      // 等待 enrichment 完成（最多 3 秒）
       const pending = _pendingEnrichment.get(hash);
       if (pending) {
-        await Promise.race([
-          pending,
-          new Promise((r) => setTimeout(r, 3000)),
-        ]);
+        await Promise.race([pending, new Promise((r) => setTimeout(r, 3000))]);
         const result = _enrichedLyrics.get(hash);
         if (result) return { decodeContent: result };
       }
@@ -1821,35 +1713,25 @@ export async function activate(ctx) {
     },
   });
 
-  // 初始化模块级兜底封面 ref，不依赖组件生命周期
   _fallbackCoverUrlRef = ctx.vue.ref(DEFAULT_COVER_URL);
 
-  // 设置 BroadcastChannel（模块级），监听 cover-fallback 插件设置变化
   if (typeof BroadcastChannel === "function") {
     _bcChannel = new BroadcastChannel("echo-plugin:cover-fallback:settings");
     _bcChannel.onmessage = (event) => {
       const payload = event.data;
-      console.log("[webdav-music] BroadcastChannel 收到消息:", payload?.type);
       if (payload && payload.type === "settings" && payload.settings) {
-        const url = computeFallbackCoverUrl(payload.settings);
-        console.log("[webdav-music] 更新 fallbackCoverUrl:", url?.substring(0, 80) + "...");
-        _fallbackCoverUrlRef.value = url;
+        _fallbackCoverUrlRef.value = computeFallbackCoverUrl(payload.settings);
       }
     };
-    // 清理通道（deactivate 时）
-    ctx.dispose(() => {
-      _bcChannel?.close();
-      _bcChannel = null;
-    });
+    ctx.dispose(() => { _bcChannel?.close(); _bcChannel = null; });
   }
 
-  // Settings
   ctx.ui.settings.define({
     title: "WebDAV 音乐",
+    description: "连接 WebDAV 服务器，浏览和播放云端音乐文件。",
     component: createSettingsPanel(ctx, state),
   });
 
-  // Page + sidebar (proper native sidebar entry via the host API)
   const BrowserPage = createBrowserPage(ctx, state);
   ctx.ui.addPage({
     id: "browser",
@@ -1859,11 +1741,7 @@ export async function activate(ctx) {
     sidebar: true,
   });
 
-  // Cleanup on deactivation
-  ctx.dispose(() => {
-    state = null;
-  });
-
+  ctx.dispose(() => { state = null; });
   ctx.toast.success(`${ctx.manifest.name} 已启用`);
 }
 
