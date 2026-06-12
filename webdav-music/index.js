@@ -1758,7 +1758,9 @@ export async function activate(ctx) {
       if (!trackId) return;
       const track = ctx.player.currentTrack;
       if (!track || track.source !== "webdav" || !track._filePath) return;
-      const promise = enrichTrack(ctx, state, track).catch(() => {});
+      const promise = enrichTrack(ctx, state, track).catch(
+        (err) => console.error("[webdav-music] enrichTrack failed:", err),
+      );
       _pendingEnrichment.set(String(trackId), promise);
       promise.finally(() => _pendingEnrichment.delete(String(trackId)));
     },
