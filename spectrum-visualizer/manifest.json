@@ -1,7 +1,7 @@
 {
   "id": "spectrum-visualizer",
   "name": "频谱可视化",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "在播放栏、mini 播放器和歌词页底部控制区显示跟随音频变化的频谱背景。",
   "author": "EchoMusic",
   "icon": "icon.svg",

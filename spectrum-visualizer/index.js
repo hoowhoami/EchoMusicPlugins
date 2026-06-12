@@ -6,6 +6,7 @@ const DEFAULT_SETTINGS = {
   showPlayerBar: false,
   showMiniPlayer: false,
   showLyricControls: true,
+  showBackdrop: false,
   fps: 15,
   binCount: 64,
   fftSize: 1024,
@@ -60,6 +61,7 @@ const normalizeSettings = (value) => {
     showMiniPlayer: source.showMiniPlayer ?? DEFAULT_SETTINGS.showMiniPlayer,
     showLyricControls:
       source.showLyricControls ?? DEFAULT_SETTINGS.showLyricControls,
+    showBackdrop: source.showBackdrop ?? DEFAULT_SETTINGS.showBackdrop,
     fps: [15, 24, 30].includes(fps) ? fps : DEFAULT_SETTINGS.fps,
     binCount: [32, 64, 96, 128].includes(binCount)
       ? binCount
@@ -137,7 +139,9 @@ const refreshSpectrumStatus = async () => {
     setSpectrumStatus(await runtimeCtx.audio.spectrum.getStatus());
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : String(error || "频谱状态读取失败");
+      error instanceof Error
+        ? error.message
+        : String(error || "频谱状态读取失败");
     setSpectrumStatus({
       available: false,
       running: false,
@@ -189,12 +193,19 @@ const createLayerElement = (kind) => {
 const setLayerVariables = (entry) => {
   const settings = state?.settings ?? DEFAULT_SETTINGS;
   const opacity = settings.opacity / 100;
+  const showBackdrop = Boolean(
+    settings.showBackdrop && getLayerAllowed(entry.kind, settings),
+  );
   entry.layer.style.setProperty("--echo-spectrum-opacity", String(opacity));
   entry.layer.style.setProperty("--echo-spectrum-fill", `${settings.fill}%`);
   entry.layer.style.setProperty(
     "--echo-spectrum-lyric-height",
     `${settings.lyricHeight}px`,
   );
+  entry.layer.dataset.backdrop = showBackdrop ? "true" : "false";
+  if (entry.kind !== "lyric") {
+    entry.host.classList.toggle("echo-spectrum-backdrop-host", showBackdrop);
+  }
 };
 
 const removeLayer = (entry) => {
@@ -204,6 +215,7 @@ const removeLayer = (entry) => {
   }
   if (entry.kind !== "lyric") {
     entry.host.classList.remove(`echo-spectrum-${entry.kind}-host`);
+    entry.host.classList.remove("echo-spectrum-backdrop-host");
     if (!entry.host.querySelector(".echo-spectrum-layer")) {
       entry.host.classList.remove("echo-spectrum-host");
     }
@@ -296,7 +308,6 @@ const appendRoundRect = (context, x, y, width, height, radius) => {
 
 const drawBackdrop = (context, width, height, settings, energy, kind) => {
   const colors = PALETTES[settings.palette] || PALETTES.aurora;
-  context.clearRect(0, 0, width, height);
   context.save();
   context.globalAlpha = (kind === "lyric" ? 0.18 : 0.24) + energy * 0.14;
   const gradient = context.createLinearGradient(0, 0, width, height);
@@ -376,7 +387,14 @@ const drawIdle = (context, width, height, settings, time) => {
     const wave = 0.5 + 0.5 * Math.sin(time / 700 + index * 0.36);
     const barHeight = 2 + wave * 7;
     const x = index * slot + slot * 0.22;
-    appendRoundRect(context, x, height - 12 - barHeight, slot * 0.56, barHeight, 2);
+    appendRoundRect(
+      context,
+      x,
+      height - 12 - barHeight,
+      slot * 0.56,
+      barHeight,
+      2,
+    );
   }
   context.fill();
   context.restore();
@@ -393,7 +411,10 @@ const drawLayer = (entry, time) => {
 
   const frame = latestFrame;
   const energy = clamp(frame?.rms ?? 0, 0, 1);
-  drawBackdrop(entry.context, width, height, settings, energy, entry.kind);
+  entry.context.clearRect(0, 0, width, height);
+  if (settings.showBackdrop) {
+    drawBackdrop(entry.context, width, height, settings, energy, entry.kind);
+  }
 
   if (frame && frame.state !== "idle") {
     if (settings.mode === "wave") {
@@ -660,6 +681,11 @@ const createSettingsComponent = (ctx) =>
               toggle("showPlayerBar", "PlayerBar 背景"),
               toggle("showMiniPlayer", "mini 播放器背景"),
               toggle("showLyricControls", "歌词页控制栏上方"),
+              toggle(
+                "showBackdrop",
+                "背景光晕",
+                "开启后为频谱额外绘制渐变底色，默认关闭。",
+              ),
             ]),
           ]),
           section("视觉参数", [
@@ -914,8 +940,8 @@ export async function activate(ctx) {
   z-index: 0;
 }
 
-.echo-spectrum-playerbar canvas,
-.echo-spectrum-mini canvas {
+.echo-spectrum-playerbar[data-backdrop="true"] canvas,
+.echo-spectrum-mini[data-backdrop="true"] canvas {
   background:
     linear-gradient(180deg, rgba(8, 12, 22, 0.18), rgba(8, 12, 22, 0.04)),
     transparent;
@@ -935,6 +961,10 @@ export async function activate(ctx) {
   height: var(--echo-spectrum-lyric-height);
   margin-top: -8px;
   overflow: hidden;
+  background: transparent;
+}
+
+.echo-spectrum-lyric[data-backdrop="true"] {
   background:
     linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.1) 100%),
     transparent;
@@ -953,22 +983,26 @@ export async function activate(ctx) {
 .echo-spectrum-lyric::before {
   top: 0;
   height: 26px;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0));
+  background: transparent;
 }
 
 .echo-spectrum-lyric::after {
   bottom: 0;
   height: 22px;
+  background: transparent;
+}
+
+.echo-spectrum-lyric[data-backdrop="true"]::after {
   background: linear-gradient(180deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.16));
 }
 
-.mini-card.echo-spectrum-mini-host {
+.mini-card.echo-spectrum-mini-host.echo-spectrum-backdrop-host {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.88)),
     #f5f5f5;
 }
 
-.dark .mini-card.echo-spectrum-mini-host {
+.dark .mini-card.echo-spectrum-mini-host.echo-spectrum-backdrop-host {
   background:
     linear-gradient(180deg, rgba(24, 27, 34, 0.8), rgba(24, 27, 34, 0.9)),
     #181b22;

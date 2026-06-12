@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Water Lyrics">
+  <rect width="64" height="64" rx="14" fill="#10231f"/>
+  <path d="M10 42c7-5 12 5 19 0s12-5 25 0" fill="none" stroke="#8ff7de" stroke-width="4" stroke-linecap="round"/>
+  <path d="M12 31c6-4 11 4 17 0s12-4 23 0" fill="none" stroke="#58b7ff" stroke-width="3" stroke-linecap="round" opacity=".8"/>
+  <path d="M17 21h30" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity=".9"/>
+  <path d="M24 17h16" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity=".55"/>
+  <path d="M24 12l16 40" stroke="#b8fff0" stroke-width="2" stroke-linecap="round" opacity=".35"/>
+</svg>

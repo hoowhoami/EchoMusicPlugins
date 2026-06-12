@@ -1,0 +1,12 @@
+{
+  "id": "page-motion",
+  "name": "页面动效",
+  "version": "1.0.1",
+  "description": "统一页面切换动效，支持开关、预设和时长设置。",
+  "author": "EchoMusic",
+  "icon": "icon.svg",
+  "main": "index.js",
+  "requires": {
+    "echoMusicVersion": ">=2.2.6-beta.19"
+  }
+}

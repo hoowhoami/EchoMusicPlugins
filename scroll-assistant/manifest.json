@@ -1,0 +1,12 @@
+{
+  "id": "scroll-assistant",
+  "name": "滚动助手",
+  "version": "1.0.4",
+  "description": "为页面补充到底部按钮，长内容浏览更顺手。",
+  "author": "EchoMusic",
+  "icon": "icon.svg",
+  "main": "index.js",
+  "requires": {
+    "echoMusicVersion": ">=2.2.6-beta.20"
+  }
+}

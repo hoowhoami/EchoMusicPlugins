@@ -1,0 +1,49 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="512"
+  height="512"
+  viewBox="0 0 512 512"
+  role="img"
+  aria-label="Page Motion"
+>
+  <rect width="512" height="512" rx="112" fill="#0ea5e9" />
+  <rect
+    x="120"
+    y="128"
+    width="240"
+    height="48"
+    rx="24"
+    fill="#ffffff"
+    opacity="0.9"
+  />
+  <rect
+    x="120"
+    y="224"
+    width="160"
+    height="40"
+    rx="20"
+    fill="#ffffff"
+    opacity="0.68"
+  />
+  <path
+    d="M264 336H160"
+    fill="none"
+    stroke="#ffffff"
+    stroke-linecap="round"
+    stroke-width="28"
+    opacity="0.42"
+  />
+  <path
+    d="M264 336h80v36l64-60-64-60v36H176v48h88z"
+    fill="#ffffff"
+    opacity="0.96"
+  />
+  <path
+    d="M136 400c60-36 136-36 232 0"
+    fill="none"
+    stroke="#bae6fd"
+    stroke-linecap="round"
+    stroke-width="24"
+    opacity="0.72"
+  />
+</svg>

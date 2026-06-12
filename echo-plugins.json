@@ -3,6 +3,48 @@
   "homepage": "https://github.com/hoowhoami/EchoMusicPlugins",
   "plugins": [
     {
+      "id": "dynamic-island-lyric",
+      "path": "dynamic-island-lyric",
+      "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/dynamic-island-lyric",
+      "tags": [
+        "lyrics",
+        "floating-window",
+        "now-playing",
+        "desktop"
+      ]
+    },
+    {
+      "id": "water-lyrics",
+      "path": "water-lyrics",
+      "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/water-lyrics",
+      "tags": [
+        "appearance",
+        "lyrics",
+        "lyric-effects",
+        "animation"
+      ]
+    },
+    {
+      "id": "page-motion",
+      "path": "page-motion",
+      "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/page-motion",
+      "tags": [
+        "appearance",
+        "page-transition",
+        "animation"
+      ]
+    },
+    {
+      "id": "scroll-assistant",
+      "path": "scroll-assistant",
+      "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/scroll-assistant",
+      "tags": [
+        "navigation",
+        "scroll",
+        "productivity"
+      ]
+    },
+    {
       "id": "cover-fallback",
       "path": "cover-fallback",
       "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/cover-fallback",
@@ -81,5 +123,3 @@
     }
   ]
 }
-
-
