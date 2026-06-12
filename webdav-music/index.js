@@ -1679,10 +1679,10 @@ export async function activate(ctx) {
   });
 
   ctx.vue.watch(
-    () => ctx.player.currentTrackId,
+    () => ctx.stores.player.currentTrackId,
     (trackId) => {
       if (!trackId) return;
-      const track = ctx.player.currentTrack;
+      const track = ctx.stores.player.currentTrackSnapshot;
       if (!track || track.source !== "webdav" || !track._filePath) return;
       const sid = String(trackId);
       if (_pendingEnrichment.has(sid)) return;
