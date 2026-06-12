@@ -1761,16 +1761,19 @@ export async function activate(ctx) {
   // 监听播放器切歌，自动为 webdav 音轨充实嵌入标签元数据
   // 覆盖三种场景：浏览页双击播放、上一首/下一首切歌、重启应用后恢复播放
   ctx.vue.watch(
-    () => ctx.player.currentTrackId,
+    () => ctx.stores.player.currentTrackId,
     (trackId) => {
       if (!trackId) return;
-      const track = ctx.player.currentTrack;
+      const track = ctx.stores.player.currentTrackSnapshot;
       if (!track || track.source !== "webdav" || !track._filePath) return;
+      const sid = String(trackId);
+      if (_pendingEnrichment.has(sid)) return;
+      console.log("[webdav-music] Track changed, enriching:", track._filePath);
       const promise = enrichTrack(ctx, state, track).catch(
         (err) => console.error("[webdav-music] enrichTrack failed:", err),
       );
-      _pendingEnrichment.set(String(trackId), promise);
-      promise.finally(() => _pendingEnrichment.delete(String(trackId)));
+      _pendingEnrichment.set(sid, promise);
+      promise.finally(() => _pendingEnrichment.delete(sid));
     },
     { immediate: true },
   );
