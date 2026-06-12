@@ -314,13 +314,11 @@ const syncToStores = (ctx, songId, patch) => {
       _enrichedLyrics.set(sid, patch.lyric);
     }
     // 3) 更新当前播放歌曲的快照
-    //    必须从 store 重新读取 snapshot（main app 切歌时会创建新对象）
-    //    用新对象替换 currentTrackSnapshot 以触发 Vue 响应式更新
+    //    使用 Object.assign 就地修改，确保 Vue 响应式追踪生效
+    //    （currentTrackSnapshot 由 toRawSong() 创建，用 markRaw 包装）
     if (player.currentTrackId && String(player.currentTrackId) === sid) {
       const currentSnapshot = player.currentTrackSnapshot;
-      if (currentSnapshot) {
-        player.currentTrackSnapshot = { ...currentSnapshot, ...patch };
-      }
+      if (currentSnapshot) Object.assign(currentSnapshot, patch);
       // 4) 元数据充实后同步刷新 Windows SMTC
       const snapshotForSmtc = player.currentTrackSnapshot;
       if (snapshotForSmtc && window.electron?.mediaControls) {
