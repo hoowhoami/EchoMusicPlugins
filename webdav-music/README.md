@@ -88,6 +88,13 @@ EchoMusicPlugins/
 
 ## 更新日志
 
+### v1.1.3
+
+- 清理冗余 console.log 调试日志，仅保留 error/warn 级别
+- 简化播放逻辑：使用 ctx.playlist.playNext() / append() / replaceQueueAndPlay()
+- 修复 watcher 使用 ctx.stores.player 直接访问确保切歌时正确触发 enrich
+- 精简代码（1872 行 → 1636 行）
+
 ### v1.1.2
 
 - 修复切换上一首/下一首时无法显示封面和歌词的问题

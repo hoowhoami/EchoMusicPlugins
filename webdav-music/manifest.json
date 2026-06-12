@@ -1,7 +1,7 @@
 {
   "id": "webdav-music",
   "name": "WebDAV 音乐",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "description": "连接 WebDAV 服务器，浏览和播放云端音乐文件。",
   "author": "Oneday5799",
   "icon": "icon.svg",
