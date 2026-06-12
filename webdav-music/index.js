@@ -1785,9 +1785,6 @@ export async function activate(ctx) {
       return null;
     },
   });
-    },
-    { immediate: true },
-  );
 
   // 初始化模块级兜底封面 ref，不依赖组件生命周期
   _fallbackCoverUrlRef = ctx.vue.ref(DEFAULT_COVER_URL);
