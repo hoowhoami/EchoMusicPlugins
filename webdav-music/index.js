@@ -1444,12 +1444,12 @@ const createBrowserPage = (ctx, state) => {
         const replace = ctx.stores.settings?.replacePlaylist;
         try {
           if (replace) {
-            await ctx.player.replaceQueueAndPlay(getSongs());
+            await ctx.player.replaceQueueAndPlay(getSongs(), { requestedSong: song });
           } else {
             const activeQueue = ctx.playlist.activeQueue;
             let queueSongs = activeQueue?.songs?.length > 0 ? [...activeQueue.songs] : [];
             if (!queueSongs.some((s) => String(s.id) === String(song.id))) queueSongs.push(song);
-            await ctx.player.replaceQueueAndPlay(queueSongs);
+            await ctx.player.replaceQueueAndPlay(queueSongs, { requestedSong: song });
           }
         } catch (err) { ctx.toast.danger("播放失败"); }
       };
