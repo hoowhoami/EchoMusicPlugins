@@ -391,17 +391,13 @@ const buildPatchFromSource = (song, source, sourceType) => {
  * 使用 ctx.kugou 调用 EchoMusic 内置酷狗接口，无需额外鉴权。
  */
 const enrichFromKugouApi = async (ctx, song) => {
-  console.log("[webdav-music] enrichFromKugouApi entered, title:", song?.title, "ctx.kugou:", !!ctx?.kugou);
   if (!song || !song.title || !ctx.kugou) return;
-  // 如果歌曲已有封面和歌词，跳过 API 查询
-  if (song.coverUrl && song.lyric) {
-    console.log("[webdav-music] enrichFromKugouApi skipped, song already has cover and lyric");
-    return;
-  }
+  // 如果歌曲已有有效封面（HTTP URL，非 Blob URL）和歌词，跳过 API 查询
+  const hasValidCover = song.coverUrl && /^https?:\/\//.test(song.coverUrl);
+  if (hasValidCover && song.lyric) return;
   const artist = song.artist || "";
   const title = song.title;
   const keyword = artist && artist !== "未知歌手" ? `${artist} ${title}` : title;
-  console.log("[webdav-music] enrichFromKugouApi searching:", keyword);
   try {
     const result = await ctx.kugou.search.search(keyword, "song", 1, 5);
     const data = result?.data;
@@ -412,25 +408,15 @@ const enrichFromKugouApi = async (ctx, song) => {
     }
     const match = lists[0];
     if (!match) return;
-    // 等到搜索结果返回时，可能 readEmbeddedTags 已完成并设置了封面/歌词
-    // 如果歌曲现在已有封面和歌词，跳过补全
-    if (song.coverUrl && song.lyric) {
-      console.log("[webdav-music] enrichFromKugouApi skipped after search, song already has cover and lyric");
-      return;
-    }
-    // 从匹配结果中提取元数据（字段名参考主应用 mapSearchSong）
+    const hasValidCoverAfterSearch = song.coverUrl && /^https?:\/\//.test(song.coverUrl);
+    if (hasValidCoverAfterSearch && song.lyric) return;
     const fileHash = match.FileHash;
-    const rawCoverInput = match.Image || match.trans_param?.union_cover || match.cover || "";
-    const coverUrl = formatPicUrl(rawCoverInput);
-    console.log("[webdav-music] enrichFromKugouApi cover URL debug:", { rawInput: rawCoverInput?.substring(0, 80), formatted: coverUrl?.substring(0, 80) });
+    const coverUrl = formatPicUrl(match.Image || match.trans_param?.union_cover || match.cover || "");
     const albumName = match.AlbumName || "";
     const matchSinger = match.SingerName || "";
     const matchTitle = match.SongName || match.FileName || match.OriSongName || "";
     
-    // 构建 patch
     const kugouData = { coverUrl, albumName, matchSinger, lyricText: "" };
-    
-    // 搜索歌词（通过 FileHash）—— 仅当歌曲还没有歌词时
     if (fileHash && !song.lyric) {
       try {
         const lyricResult = await ctx.kugou.music.searchLyric(fileHash);
