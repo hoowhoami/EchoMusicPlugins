@@ -951,6 +951,16 @@ const ABOUT_HTML = `<div class="webdav-about">
 <p>EchoMusic &gt;= 2.2.6-beta.11</p>
 
 <h2>更新日志</h2>
+<h3>v1.1.2</h3>
+<ul>
+<li>修复切换上一首/下一首时无法显示封面和歌词的问题</li>
+<li>修复随机模式下点击播放全部始终播放第一首歌的问题</li>
+<li>修复搜索优先模式下酷狗 API 被错误跳过导致无封面的问题</li>
+<li>修复封面图片 401/SSL 错误，改用 fetch + Authorization header 获取</li>
+<li>注册歌词解析器（ctx.lyrics.registerResolver），解决 fetchLyrics 覆盖歌词的时序问题</li>
+<li>使用主应用高级 API（ctx.player / ctx.playlist）简化播放逻辑</li>
+<li>清理冗余 console.log 调试日志</li>
+</ul>
 <h3>v1.1.1</h3>
 <ul>
 <li>修复设置页重置/保存按钮随内容滚动的问题，按钮固定在页面底部</li>
