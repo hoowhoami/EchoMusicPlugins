@@ -16,6 +16,7 @@
   },
   "capabilities": {
     "audioSource": true,
-    "kugouApi": true
+    "kugouApi": true,
+    "lyrics": true
   }
 }

@@ -43,6 +43,9 @@ const DEFAULT_SETTINGS = {
 let _sortField = null; // 'name' | 'title' | 'size' | null
 let _sortOrder = null; // 'asc' | 'desc' | null
 
+/** 模块级歌词缓存：songId → lyric text，供歌词解析器使用 */
+const _enrichedLyrics = new Map();
+
 
 /* ===================================================================
  * Cover Fallback — 跟随主应用兜底封面机制
@@ -297,43 +300,40 @@ const syncToStores = (ctx, songId, patch) => {
         queue.songs[idx] = { ...queue.songs[idx], ...patch };
       }
     }
-    // 2) 如果是当前播放的歌曲，重新赋值快照触发 UI 更新
-    //    currentTrackSnapshot 是 markRaw 对象，Object.assign 不触发响应式
+    // 2) 注入歌词到 lyricStore（解决歌词异步加载的时序问题）
+    if (patch.lyric) {
+      lyric.setLyric(patch.lyric, sid);
+      _enrichedLyrics.set(sid, patch.lyric);
+    }
+    // 3) 更新当前播放歌曲的快照
+    //    必须从 store 重新读取 snapshot（main app 切歌时会创建新对象）
+    //    用新对象替换 currentTrackSnapshot 以触发 Vue 响应式更新
     if (player.currentTrackId && String(player.currentTrackId) === sid) {
-      let snapshot = player.currentTrackSnapshot;
-      if (snapshot) {
-        // 合并 patch 生成新快照（消除冗余二次读取）
-        snapshot = { ...snapshot, ...patch };
-        player.currentTrackSnapshot = snapshot;
-      }
-      // 3) 注入歌词到 lyricStore（解决歌词异步加载的时序问题）
-      if (patch.lyric) {
-        console.log("[webdav-music] Injecting lyric into lyricStore, length:", patch.lyric.length);
-        lyric.setLyric(patch.lyric, sid);
+      const currentSnapshot = player.currentTrackSnapshot;
+      if (currentSnapshot) {
+        player.currentTrackSnapshot = { ...currentSnapshot, ...patch };
       }
       // 4) 元数据充实后同步刷新 Windows SMTC
-      if (snapshot && window.electron?.mediaControls) {
-        const rawCoverUrl = patch.coverUrl || snapshot.coverUrl || snapshot.cover || _fallbackCoverUrlRef.value;
-        console.log("[webdav-music] SMTC sync call, rawCoverUrl type:", rawCoverUrl?.substring(0, 50), "patch keys:", Object.keys(patch).join(","));
+      const snapshotForSmtc = player.currentTrackSnapshot;
+      if (snapshotForSmtc && window.electron?.mediaControls) {
+        const rawCoverUrl = patch.coverUrl || snapshotForSmtc.coverUrl || snapshotForSmtc.cover || _fallbackCoverUrlRef.value;
         (async () => {
           try {
             const coverUrl = await convertCoverForSmtc(rawCoverUrl);
-            console.log("[webdav-music] SMTC updateMetadata with coverUrl:", coverUrl?.substring(0, 80));
             window.electron.mediaControls.updateMetadata({
-              title: snapshot.title || "未知歌曲",
-              artist: snapshot.artist || "未知歌手",
-              album: snapshot.album || "",
-              durationMs: (snapshot.duration || 0) * 1000,
+              title: snapshotForSmtc.title || "未知歌曲",
+              artist: snapshotForSmtc.artist || "未知歌手",
+              album: snapshotForSmtc.album || "",
+              durationMs: (snapshotForSmtc.duration || 0) * 1000,
               coverUrl,
             });
           } catch (e) {
-            console.warn('[webdav-music] SMTC cover conversion failed, using default:', e);
             const defaultCoverUrl = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAIAAoDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAFRABAQAAAAAAAAAAAAAAAAAAAAf/xAAUAQEAAAAAAAAAAAAAAAAAAAAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8ApgAH/9k=';
             window.electron.mediaControls.updateMetadata({
-              title: snapshot.title || "未知歌曲",
-              artist: snapshot.artist || "未知歌手",
-              album: snapshot.album || "",
-              durationMs: (snapshot.duration || 0) * 1000,
+              title: snapshotForSmtc.title || "未知歌曲",
+              artist: snapshotForSmtc.artist || "未知歌手",
+              album: snapshotForSmtc.album || "",
+              durationMs: (snapshotForSmtc.duration || 0) * 1000,
               coverUrl: defaultCoverUrl,
             });
           }
@@ -1758,15 +1758,33 @@ export async function activate(ctx) {
   // 监听播放器切歌，自动为 webdav 音轨充实嵌入标签元数据
   // 覆盖三种场景：浏览页双击播放、上一首/下一首切歌、重启应用后恢复播放
   ctx.vue.watch(
-    () => ctx.stores.player.currentTrackId,
+    () => ctx.player.currentTrackId,
     (trackId) => {
       if (!trackId) return;
-      const track = ctx.stores.player.currentTrackSnapshot;
+      const track = ctx.player.currentTrack;
       if (!track || track.source !== "webdav" || !track._filePath) return;
-      console.log("[webdav-music] currentTrackId changed, enriching:", track._filePath);
       enrichTrack(ctx, state, track).catch(
         (err) => console.error("[webdav-music] enrichTrack failed:", err),
       );
+    },
+    { immediate: true },
+  );
+
+  // 注册歌词解析器：主应用获取歌词时优先调用此解析器
+  // 解决 fetchLyrics 异步覆盖插件注入歌词的时序问题
+  ctx.lyrics.registerResolver({
+    id: "webdav-embedded",
+    match: (context) => {
+      const track = context.track;
+      return track?.source === "webdav" && !!track?._filePath;
+    },
+    resolve: (context) => {
+      const hash = context.hash;
+      const cached = _enrichedLyrics.get(hash);
+      if (cached) return { decodeContent: cached };
+      return null;
+    },
+  });
     },
     { immediate: true },
   );
