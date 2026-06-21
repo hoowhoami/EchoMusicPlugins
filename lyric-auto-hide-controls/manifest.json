@@ -1,0 +1,12 @@
+{
+  "id": "lyric-auto-hide-controls",
+  "name": "Lyric Auto-Hide Controls",
+  "version": "1.0.0",
+  "description": "歌词全屏界面底部控制栏在鼠标静止后自动淡出隐藏，实现沉浸式歌词体验",
+  "author": "cow",
+  "main": "index.js",
+  "type": "module",
+  "compatibility": {
+    "echoMusic": ">=2.0.0"
+  }
+}
