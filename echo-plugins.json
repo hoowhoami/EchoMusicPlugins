@@ -214,6 +214,11 @@
         "theme",
         "beautify"
       ]
+    },
+    {
+      "id": "lyric-auto-hide-controls",        // 插件唯一标识，与 manifest.json 中的 id 一致
+      "path": "lyric-auto-hide-controls",      // 插件目录相对仓库根目录的路径
+      "tags": ["lyrics", "ui"]                 // 插件标签：lyrics（歌词相关）/ ui（界面美化）
     }
   ]
 }
