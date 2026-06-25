@@ -1,0 +1,15 @@
+{
+  "id": "xiaotoolkit",
+  "name": "小功能",
+  "version": "1.1.0",
+  "description": "热门排序 + 隐藏歌单 + 歌词隐藏控制栏 + 隐藏听歌识曲 + 顶部插件按钮 + 桌面特效",
+  "author": "张三",
+  "icon": "icon.svg",
+  "main": "index.js",
+  "capabilities": {
+    "kugouApi": true
+  },
+  "requires": {
+    "echoMusicVersion": ">=2.2.6-beta.20"
+  }
+}
