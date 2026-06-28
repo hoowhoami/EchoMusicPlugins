@@ -624,11 +624,11 @@ function startDailyPlay() {
   console.log('[xiaotoolkit] 首页一键播放已启动');
 
   function onFeatureActionClick(e) {
-    // 拦截首页功能卡片（每日推荐 / 排行榜）的播放按钮
-    var action = e.target.closest('.feature-action');
-    if (!action) return;
+    // 拦截首页功能卡片的播放按钮 + 装饰图标区域
+    var trigger = e.target.closest('.feature-action, .feature-icon');
+    if (!trigger) return;
 
-    var card = action.closest('.home-feature-card');
+    var card = trigger.closest('.home-feature-card');
     if (!card) return;
 
     var isDaily = card.querySelector('.feature-icon.gradient-primary');
@@ -636,7 +636,7 @@ function startDailyPlay() {
 
     if (!isDaily && !isRanking) return;
 
-    console.log('[xiaotoolkit] ' + (isDaily ? '每日推荐' : '排行榜') + '播放按钮被点击');
+    console.log('[xiaotoolkit] ' + (isDaily ? '每日推荐' : '排行榜') + '图标被点击，直接播放');
     e.stopPropagation();
     e.preventDefault();
 
