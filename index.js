@@ -1,6 +1,6 @@
 // ===== 小功能 =====
 // Author: 张三
-// 小功能：热门排序 + 歌单位置换位 + 歌词自动隐藏控制栏 + 隐藏听歌识曲 + 顶部插件按钮 + 10种桌面特效
+// 小功能：热门排序 + 收藏歌单自动切换 + 单击播放 + 首页卡片一键播放(每日推荐/排行榜) + 歌词自动隐藏控制栏 + 隐藏听歌识曲 + 顶部插件按钮 + 10种桌面特效
 // 注意：右键下载已独立为单独插件，如需使用请安装 right-click-download
 // 在插件设置面板中可独立开关每个功能
 
@@ -249,8 +249,8 @@ function stopArtistSort() {
   _asDoneUrl = '';
 }
 
-// ================= 2. 收藏歌单自动激活 =================
-// 启动后等 sidebar 渲染，自动点击收藏歌单 tab
+// ================= 2. 收藏歌单自动切换 =================
+// 启动后等 sidebar 渲染，自动切换到收藏歌单 tab
 // 点击成功后会一直保持，直到用户手动切回
 
 function hpClickFavorite() {
@@ -291,7 +291,373 @@ function stopHidePlaylist() {
   if (_hpTimer) { clearTimeout(_hpTimer); _hpTimer = null; }
 }
 
-// ================ 3. 歌词自动隐藏控制栏 ================
+// ================ 3. 单击任意位置播放 ================
+// 单击歌曲列表的任意位置（歌名、歌手等）即可播放
+// 不影响已有按钮操作（播放图标、菜单等）
+
+var _clickDispose = null;
+
+function skipClick(el) {
+  if (!el) return true;
+  if (el.closest('button, a, [role="menuitem"]')) return true;
+  if (el.closest('.context-menu, .song-context-menu, .song-list-meta-link')) return true;
+  if (el.matches('.cursor-pointer') || el.closest('.cursor-pointer')) return true;
+  return false;
+}
+
+function startClickToPlay() {
+  if (_clickDispose) return;
+  function onRowClick(e) {
+    var row = e.target.closest('[data-song-row]');
+    if (!row) return;
+    if (skipClick(e.target)) return;
+    var firstCol = row.querySelector('.song-list-row-inner > div:first-child');
+    if (!firstCol) return;
+    var playBtn = firstCol.querySelector('.cursor-pointer');
+    if (!playBtn) return;
+    playBtn.dispatchEvent(new MouseEvent('click', {
+      bubbles: true, cancelable: true,
+      clientX: e.clientX, clientY: e.clientY,
+    }));
+  }
+  document.addEventListener('click', onRowClick, true);
+  _clickDispose = function() { document.removeEventListener('click', onRowClick, true); };
+}
+
+function stopClickToPlay() {
+  if (_clickDispose) { _clickDispose(); _clickDispose = null; }
+}
+
+// ================ 4. 首页每日推荐一键播放 ================
+// 点击每日推荐卡片的播放按钮，直接播放今日推荐，不跳转页面
+
+var _dailyDispose = null;
+var _dailyPlaying = false;
+
+function extractDailySongs(body) {
+  // 模仿 extractList 逻辑，从 Kugou API 响应中提取歌曲列表
+  if (!body || typeof body !== 'object') {
+    console.log('[xiaotoolkit] extractDailySongs: body不是对象', typeof body);
+    return [];
+  }
+  var data = body.data;
+  console.log('[xiaotoolkit] extractDailySongs: body keys=', Object.keys(body), '有data=', !!data);
+
+  if (!data || typeof data !== 'object') return [];
+
+  var candidates = [
+    data.songs && data.songs.list,
+    data.songs && data.songs.songs,
+    data.list,
+    data.info,
+    data.song_list,
+    data.songlist,
+    data.songs,
+  ];
+
+  for (var i = 0; i < candidates.length; i++) {
+    if (Array.isArray(candidates[i]) && candidates[i].length > 0) {
+      console.log('[xiaotoolkit] 在 candidates[' + i + '] 找到歌曲:', candidates[i].length);
+      return candidates[i];
+    }
+  }
+
+  // 也检查顶层数组
+  if (Array.isArray(body.list)) { console.log('[xiaotoolkit] 在 body.list 找到'); return body.list; }
+  if (Array.isArray(body.songs)) { console.log('[xiaotoolkit] 在 body.songs 找到'); return body.songs; }
+  if (Array.isArray(body.data)) { console.log('[xiaotoolkit] 在 body.data 找到'); return body.data; }
+
+  console.log('[xiaotoolkit] extractDailySongs 未找到任何歌曲列表');
+  return [];
+}
+
+function pickValue() {
+  for (var i = 0; i < arguments.length; i++) {
+    var v = arguments[i];
+    if (v !== undefined && v !== null && v !== '') return v;
+  }
+  return '';
+}
+
+function parseIntSafe(v, fallback) {
+  if (v === undefined || v === null) return fallback || 0;
+  var n = parseInt(v, 10);
+  return isNaN(n) ? (fallback || 0) : n;
+}
+
+function mapDailySong(item) {
+  var record = item || {};
+  var singer = pickValue(record.author_name, record.singername, record.singer, record.artist, '');
+  var name = pickValue(record.songname, record.filename, record.name, record.title, '未知歌曲');
+  var hash = pickValue(record.hash, record.FileHash, record.hash_128, '');
+  var id = pickValue(record.mixsongid, record.audio_id, record.album_audio_id, hash, '');
+  var durationRaw = parseIntSafe(pickValue(record.time_length, record.timelength, record.duration, 0));
+  var duration = durationRaw > 100000 ? Math.floor(durationRaw / 1000) : durationRaw;
+  var cover = pickValue(record.album_sizable_cover, record.cover, record.pic, '');
+  var album = pickValue(record.album_name, record.albumname, record.album, '');
+
+  return {
+    id: String(id),
+    songId: String(pickValue(record.songid, record.song_id, record.audio_id, '')),
+    title: name,
+    name: name,
+    artist: String(singer || '未知歌手'),
+    duration: duration,
+    coverUrl: String(cover),
+    cover: String(cover),
+    audioUrl: '',
+    hash: String(hash),
+    mixSongId: parseIntSafe(id, 0),
+    album: String(album),
+    albumName: String(album),
+    singers: singer ? [{ name: String(singer) }] : [],
+    artists: singer ? [{ name: String(singer) }] : [],
+  };
+}
+
+function mapRankSong(item) {
+  // 简版 mapRankSong
+  var record = item || {};
+  var audioInfo = record.audio_info || {};
+  var albumInfo = record.album_info || {};
+  var transParam = record.trans_param || {};
+
+  var singer = record.author_name || record.singername || record.singer || '';
+  var name = record.songname || record.name || '未知歌曲';
+  var hash = audioInfo.hash_128 || audioInfo.hash || record.hash || '';
+  var id = record.audio_id || record.mixsongid || audioInfo.audio_id || hash;
+  var durationRaw = parseIntSafe(audioInfo.duration_128 || audioInfo.duration || 0);
+  var duration = durationRaw > 100000 ? Math.floor(durationRaw / 1000) : durationRaw;
+  var cover = albumInfo.sizable_cover || transParam.union_cover || record.img || record.pic || '';
+  var album = albumInfo.album_name || record.album_name || '';
+
+  return {
+    id: String(id),
+    songId: String(record.audio_id || ''),
+    title: name,
+    name: name,
+    artist: String(singer || '未知歌手'),
+    duration: duration,
+    coverUrl: String(cover),
+    cover: String(cover),
+    audioUrl: '',
+    hash: String(hash),
+    mixSongId: parseIntSafe(id, 0),
+    album: String(album),
+    albumName: String(album),
+    singers: singer ? [{ name: String(singer) }] : [],
+    artists: singer ? [{ name: String(singer) }] : [],
+  };
+}
+
+async function playDailyRecommend() {
+  if (_dailyPlaying) return;
+  _dailyPlaying = true;
+
+  try {
+    // 从 pinia store 构建认证头（复刻 buildAuthHeader 逻辑）
+    var piniaState = ctx.pinia.state.value;
+    var userInfo = piniaState.user && piniaState.user.info;
+    var deviceInfo = piniaState.device && piniaState.device.info;
+
+    var authParts = [];
+    if (userInfo) {
+      if (userInfo.token) authParts.push('token=' + userInfo.token);
+      if (userInfo.userid) authParts.push('userid=' + userInfo.userid);
+      if (userInfo.t1) authParts.push('t1=' + userInfo.t1);
+    }
+    if (deviceInfo) {
+      if (deviceInfo.dfid) authParts.push('dfid=' + deviceInfo.dfid);
+      if (deviceInfo.mid) authParts.push('KUGOU_API_MID=' + deviceInfo.mid);
+      if (deviceInfo.uuid) authParts.push('uuid=' + deviceInfo.uuid);
+      if (deviceInfo.guid) authParts.push('KUGOU_API_GUID=' + deviceInfo.guid);
+      if (deviceInfo.serverDev) authParts.push('KUGOU_API_DEV=' + deviceInfo.serverDev);
+      if (deviceInfo.mac) authParts.push('KUGOU_API_MAC=' + deviceInfo.mac);
+    }
+
+    var headers = {};
+    if (authParts.length > 0) {
+      headers['Authorization'] = authParts.join(';');
+    }
+
+    console.log('[xiaotoolkit] 获取每日推荐, auth:', authParts.length, '项');
+
+    var res = await ctx.electron.api.request({
+      method: 'GET',
+      url: '/everyday/recommend',
+      headers: headers,
+    });
+
+    console.log('[xiaotoolkit] API返回:', res.status, typeof res.body);
+
+    var body = res.body || res;
+    var rawList = extractDailySongs(body);
+
+    console.log('[xiaotoolkit] 解析到歌曲:', rawList ? rawList.length : 0, '首');
+
+    if (!rawList || rawList.length === 0) {
+      ctx.toast.danger('今日暂无推荐歌曲');
+      _dailyPlaying = false;
+      return;
+    }
+
+    var songs = rawList.map(mapDailySong);
+
+    await ctx.playlist.replaceAndPlay(songs, {
+      queueId: 'queue:daily-recommend',
+      title: '每日推荐',
+      subtitle: '为你量身定制',
+      type: 'daily-recommend',
+      dynamic: false,
+    });
+
+    ctx.toast.success('正在播放今日推荐 (' + songs.length + '首)');
+  } catch (err) {
+    console.error('[xiaotoolkit] 每日推荐播放失败:', err);
+    ctx.toast.danger('获取每日推荐失败');
+  }
+
+  _dailyPlaying = false;
+}
+
+async function playRankingTop() {
+  if (_dailyPlaying) return;
+  _dailyPlaying = true;
+
+  try {
+    var piniaState = ctx.pinia.state.value;
+    var userInfo = piniaState.user && piniaState.user.info;
+    var deviceInfo = piniaState.device && piniaState.device.info;
+    var authParts = [];
+    if (userInfo) {
+      if (userInfo.token) authParts.push('token=' + userInfo.token);
+      if (userInfo.userid) authParts.push('userid=' + userInfo.userid);
+      if (userInfo.t1) authParts.push('t1=' + userInfo.t1);
+    }
+    if (deviceInfo) {
+      if (deviceInfo.dfid) authParts.push('dfid=' + deviceInfo.dfid);
+      if (deviceInfo.mid) authParts.push('KUGOU_API_MID=' + deviceInfo.mid);
+      if (deviceInfo.uuid) authParts.push('uuid=' + deviceInfo.uuid);
+      if (deviceInfo.guid) authParts.push('KUGOU_API_GUID=' + deviceInfo.guid);
+      if (deviceInfo.serverDev) authParts.push('KUGOU_API_DEV=' + deviceInfo.serverDev);
+      if (deviceInfo.mac) authParts.push('KUGOU_API_MAC=' + deviceInfo.mac);
+    }
+    var headers = {};
+    if (authParts.length > 0) headers['Authorization'] = authParts.join(';');
+
+    console.log('[xiaotoolkit] 获取排行榜');
+
+    // 1. 取榜单列表
+    var topRes = await ctx.electron.api.request({
+      method: 'GET', url: '/rank/top', headers: headers,
+    });
+    var topBody = topRes.body || topRes;
+    var topData = topBody.data || topBody;
+    var rankList = topData.list || topData.info || topData.songlist || topData;
+    if (!Array.isArray(rankList)) {
+      // 备用：/rank/list
+      var listRes = await ctx.electron.api.request({
+        method: 'GET', url: '/rank/list', headers: headers,
+      });
+      var listBody = listRes.body || listRes;
+      var listData = listBody.data || listBody;
+      rankList = listData.list || listData.info || listData;
+    }
+    if (!Array.isArray(rankList) || rankList.length === 0) {
+      ctx.toast.danger('暂无排行榜');
+      _dailyPlaying = false;
+      return;
+    }
+
+    // 取第一个有有效 id 的榜单
+    var firstRank = null;
+    for (var i = 0; i < rankList.length; i++) {
+      var r = rankList[i];
+      var rid = r.id || r.rankid || r.rankId || r.specialid;
+      if (rid) { firstRank = { item: r, id: rid }; break; }
+    }
+    if (!firstRank) {
+      ctx.toast.danger('无可用排行榜');
+      _dailyPlaying = false;
+      return;
+    }
+
+    console.log('[xiaotoolkit] 榜单:', firstRank.item.name || '未命名', 'id:', firstRank.id);
+
+    // 2. 取榜单歌曲
+    var songsRes = await ctx.electron.api.request({
+      method: 'GET', url: '/rank/audio',
+      params: { rankid: firstRank.id, page: 1, pagesize: 100 },
+      headers: headers,
+    });
+    var songsBody = songsRes.body || songsRes;
+    var songsData = songsBody.data || songsBody;
+    var songList = songsData.list || songsData.info || songsData.songlist || songsData.songs || songsData;
+    if (!Array.isArray(songList) || songList.length === 0) {
+      ctx.toast.danger('排行榜暂无歌曲');
+      _dailyPlaying = false;
+      return;
+    }
+
+    console.log('[xiaotoolkit] 排行榜歌曲:', songList.length, '首');
+    var songs = songList.map(mapRankSong);
+
+    await ctx.playlist.replaceAndPlay(songs, {
+      queueId: 'queue:ranking:' + firstRank.id,
+      title: firstRank.item.name || '排行榜',
+      subtitle: '实时热门趋势',
+      type: 'ranking',
+      dynamic: false,
+    });
+
+    ctx.toast.success('正在播放「' + (firstRank.item.name || '排行榜') + '」(' + songs.length + '首)');
+  } catch (err) {
+    console.error('[xiaotoolkit] 排行榜播放失败:', err);
+    ctx.toast.danger('获取排行榜失败');
+  }
+
+  _dailyPlaying = false;
+}
+
+function startDailyPlay() {
+  if (_dailyDispose) return;
+  console.log('[xiaotoolkit] 首页一键播放已启动');
+
+  function onFeatureActionClick(e) {
+    // 拦截首页功能卡片（每日推荐 / 排行榜）的播放按钮
+    var action = e.target.closest('.feature-action');
+    if (!action) return;
+
+    var card = action.closest('.home-feature-card');
+    if (!card) return;
+
+    var isDaily = card.querySelector('.feature-icon.gradient-primary');
+    var isRanking = card.querySelector('.feature-icon.gradient-secondary') && (card.querySelector('.feature-title') || {}).textContent === '排行榜';
+
+    if (!isDaily && !isRanking) return;
+
+    console.log('[xiaotoolkit] ' + (isDaily ? '每日推荐' : '排行榜') + '播放按钮被点击');
+    e.stopPropagation();
+    e.preventDefault();
+
+    if (isDaily) {
+      playDailyRecommend();
+    } else {
+      playRankingTop();
+    }
+  }
+
+  document.addEventListener('click', onFeatureActionClick, true);
+  _dailyDispose = function() {
+    document.removeEventListener('click', onFeatureActionClick, true);
+  };
+}
+
+function stopDailyPlay() {
+  if (_dailyDispose) { _dailyDispose(); _dailyDispose = null; }
+}
+
+// ================ 5. 歌词自动隐藏控制栏 ================
 
 var lhStyle = null;
 var lhTimer = null;
@@ -363,7 +729,7 @@ function stopLyricHide() {
   lhCleanup();
 }
 
-// ================== 5. 隐藏顶部听歌识曲按钮 ==================
+// ================== 6. 隐藏顶部听歌识曲按钮 ==================
 
 var hrStyle = null;
 
@@ -387,11 +753,16 @@ var featureState = {};
 async function loadFeatureState() {
   var saved = await ctx.storage.get('zhs-features');
   if (saved) {
+    // 兼容旧版本，新功能默认启用
+    if (saved.dailyPlay === undefined) saved.dailyPlay = true;
+    if (saved.clickToPlay === undefined) saved.clickToPlay = true;
     featureState = saved;
   } else {
     featureState = {
       artistSort: true,
       hidePlaylist: true,
+      clickToPlay: true,
+      dailyPlay: true,
       lyricHide: true,
       hideRecognize: false,
       pluginBtn: true,
@@ -414,6 +785,8 @@ export async function activate(_ctx) {
 
   if (featureState.artistSort) startArtistSort();
   if (featureState.hidePlaylist) startHidePlaylist();
+  if (featureState.clickToPlay) startClickToPlay();
+  if (featureState.dailyPlay) startDailyPlay();
   if (featureState.lyricHide) startLyricHide();
   if (featureState.hideRecognize) startHideRecognize();
   if (featureState.pluginBtn) startPluginBtn();
@@ -426,12 +799,14 @@ export async function activate(_ctx) {
     setup: function() {
       var state = ctx.vue.reactive({
         features: [
-          { id: 'artistSort', label: '歌手热门排序', desc: '歌手详情页默认按热门排序', enabled: featureState.artistSort },
-          { id: 'hidePlaylist', label: '收藏歌单自动激活', desc: '启动时自动切换到收藏歌单', enabled: featureState.hidePlaylist },
-          { id: 'lyricHide', label: '歌词隐藏控制栏', desc: '歌词全屏时控制栏2秒无操作自动隐藏', enabled: featureState.lyricHide },
-          { id: 'hideRecognize', label: '隐藏听歌识曲', desc: '隐藏顶部导航栏的听歌识曲按钮', enabled: featureState.hideRecognize },
-          { id: 'pluginBtn', label: '顶部插件管理入口', desc: '搜索框右侧添加插件快捷按钮', enabled: featureState.pluginBtn },
-          { id: 'effect', label: '桌面特效', desc: '10种粒子特效', enabled: featureState.effect },
+          { id: 'artistSort', icon: '🔥', label: '歌手热门排序', desc: '歌手详情页默认按热门排序', enabled: featureState.artistSort },
+          { id: 'hidePlaylist', icon: '📋', label: '收藏歌单自动切换', desc: '启动时自动切换到收藏歌单', enabled: featureState.hidePlaylist },
+          { id: 'clickToPlay', icon: '👆', label: '单击播放', desc: '单击歌曲任意位置即可播放', enabled: featureState.clickToPlay },
+          { id: 'dailyPlay', icon: '🎵', label: '首页卡片一键播放', desc: '每日推荐/排行榜卡片上直接播放，不跳转', enabled: featureState.dailyPlay },
+          { id: 'lyricHide', icon: '🙈', label: '歌词隐藏控制栏', desc: '歌词全屏时控制栏2秒无操作自动隐藏', enabled: featureState.lyricHide },
+          { id: 'hideRecognize', icon: '🚫', label: '隐藏听歌识曲', desc: '隐藏顶部导航栏的听歌识曲按钮', enabled: featureState.hideRecognize },
+          { id: 'pluginBtn', icon: '🔧', label: '顶部插件管理入口', desc: '搜索框右侧添加插件快捷按钮', enabled: featureState.pluginBtn },
+          { id: 'effect', icon: '🎆', label: '桌面特效', desc: '10种粒子特效', enabled: featureState.effect },
         ],
       });
       var currentEffectMode = ctx.vue.ref(featureState.effectMode || 'snow');
@@ -440,7 +815,7 @@ export async function activate(_ctx) {
         currentEffectMode.value = mode;
         featureState.effectMode = mode;
         featureState.effect = true;
-        state.features[5].enabled = true;
+        state.features[6].enabled = true;
         saveFeatureState();
         startEffect(mode);
       }
@@ -453,6 +828,8 @@ export async function activate(_ctx) {
         state.features.forEach(function(f) {
           if (f.id === 'artistSort') { f.enabled ? startArtistSort() : stopArtistSort(); }
           else if (f.id === 'hidePlaylist') { f.enabled ? startHidePlaylist() : stopHidePlaylist(); }
+          else if (f.id === 'clickToPlay') { f.enabled ? startClickToPlay() : stopClickToPlay(); }
+          else if (f.id === 'dailyPlay') { f.enabled ? startDailyPlay() : stopDailyPlay(); }
           else if (f.id === 'lyricHide') { f.enabled ? startLyricHide() : stopLyricHide(); }
           else if (f.id === 'hideRecognize') { f.enabled ? startHideRecognize() : stopHideRecognize(); }
           else if (f.id === 'pluginBtn') { f.enabled ? startPluginBtn() : stopPluginBtn(); }
@@ -473,7 +850,7 @@ export async function activate(_ctx) {
         { mode: 'aurora', icon: '🌌' },
       ];
 
-      function toggleRow(label, desc, isOn, onClick) {
+      function toggleRow(icon, label, desc, isOn, onClick) {
         return h('div', {
           style: {
             display: 'flex', 'flex-direction': 'column', gap: '2px', cursor: 'pointer',
@@ -485,10 +862,10 @@ export async function activate(_ctx) {
           onClick: onClick,
         }, [
           h('div', { style: { display: 'flex', 'align-items': 'center', gap: '6px' } }, [
-            h('span', { style: { display: 'inline-block', width: '10px', height: '10px', 'border-radius': '50%', background: isOn ? 'var(--color-primary, #4caf50)' : '#888', 'flex-shrink': '0' } }),
+            h('span', { style: { 'font-size': '14px', 'flex-shrink': '0', opacity: isOn ? '1' : '0.4' } }, icon),
             h('span', { style: { 'font-size': '13px', 'font-weight': '600', color: isOn ? 'var(--color-primary, #4caf50)' : 'var(--color-text-main)' } }, label),
           ]),
-          h('span', { style: { 'font-size': '11px', color: 'var(--color-text-secondary)', 'line-height': '1.3', 'padding-left': '16px' } }, desc),
+          h('span', { style: { 'font-size': '11px', color: 'var(--color-text-secondary)', 'line-height': '1.3', 'padding-left': '20px' } }, desc),
         ]);
       }
 
@@ -496,7 +873,7 @@ export async function activate(_ctx) {
         return h('div', { style: { display: 'flex', 'flex-direction': 'column', gap: '6px' } }, [
           h('div', { style: { display: 'grid', 'grid-template-columns': '1fr 1fr', gap: '6px' } },
             state.features.map(function(f) {
-              return toggleRow(f.label, f.desc, f.enabled, function() { f.enabled = !f.enabled; });
+              return toggleRow(f.icon, f.label, f.desc, f.enabled, function() { f.enabled = !f.enabled; });
             })
           ),
           h('div', {
@@ -545,6 +922,8 @@ export async function activate(_ctx) {
 export function deactivate() {
   stopArtistSort();
   stopHidePlaylist();
+  stopClickToPlay();
+  stopDailyPlay();
   stopLyricHide();
   stopHideRecognize();
   stopPluginBtn();
