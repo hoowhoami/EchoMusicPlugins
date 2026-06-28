@@ -1,6 +1,6 @@
 // ===== 小功能 =====
 // Author: 张三
-// 小功能：热门排序 + 隐藏自建歌单 + 歌词自动隐藏控制栏 + 隐藏听歌识曲 + 顶部插件按钮 + 桌面特效
+// 小功能：热门排序 + 歌单位置换位 + 歌词自动隐藏控制栏 + 隐藏听歌识曲 + 顶部插件按钮 + 10种桌面特效
 // 注意：右键下载已独立为单独插件，如需使用请安装 right-click-download
 // 在插件设置面板中可独立开关每个功能
 
@@ -17,13 +17,14 @@ var _effectMode = 'snow';
 
 var _effectModes = {
   snow: { label: '❄️ 下雪', color: '255,255,255', sizeRange: [2, 6], speedRange: [0.4, 1.6], windRange: [-0.3, 0.8], opacityRange: [0.4, 0.9], gravity: 1, shape: 'circle' },
-  sakura: { label: '🌸 樱花', color: '255,182,193', sizeRange: [3, 7], speedRange: [0.3, 1.2], windRange: [-0.6, 0.6], opacityRange: [0.5, 0.9], gravity: 0.8, shape: 'petal' },
+  sakura: { label: '🌸 樱花', color: '255,182,193', sizeRange: [3, 7], speedRange: [0.3, 1.2], windRange: [-0.6, 0.6], opacityRange: [0.5, 0.9], gravity: 0.8, shape: 'sakura' },
   heart: { label: '💖 爱心', color: '255,105,180', sizeRange: [4, 9], speedRange: [0.3, 1.2], windRange: [-0.5, 0.5], opacityRange: [0.5, 0.9], gravity: 0.5, shape: 'heart' },
   confetti: { label: '🎉 彩纸', color: '', sizeRange: [2, 5], speedRange: [0.5, 1.5], windRange: [-0.8, 0.8], opacityRange: [0.6, 1.0], gravity: 1.1, shape: 'confetti' },
   fire: { label: '🔥 火花', color: '255,150,50', sizeRange: [2, 5], speedRange: [0.5, 2.0], windRange: [-0.2, 0.2], opacityRange: [0.6, 1.0], gravity: -0.5, shape: 'fire' },
   rain: { label: '🌧️ 下雨', color: '180,200,255', sizeRange: [1, 2], speedRange: [3, 6], windRange: [-0.3, 0.3], opacityRange: [0.3, 0.6], gravity: 3, shape: 'line' },
-  leaf: { label: '🍁 枫叶', color: '220,80,60', sizeRange: [4, 9], speedRange: [0.2, 1.0], windRange: [-0.7, 0.7], opacityRange: [0.5, 0.9], gravity: 0.6, shape: 'petal' },
+  leaf: { label: '🍁 枫叶', color: '220,80,60', sizeRange: [4, 9], speedRange: [0.2, 1.0], windRange: [-0.7, 0.7], opacityRange: [0.5, 0.9], gravity: 0.6, shape: 'maple' },
   colorstar: { label: '⭐ 星星', color: '255,215,0', sizeRange: [3, 7], speedRange: [0.3, 1.0], windRange: [-0.4, 0.4], opacityRange: [0.5, 1.0], gravity: 0.6, shape: 'colorstar' },
+  petal: { label: '🌹 花瓣', color: '220,30,30', sizeRange: [3, 7], speedRange: [0.3, 1.2], windRange: [-0.5, 0.5], opacityRange: [0.5, 0.9], gravity: 0.7, shape: 'petal' },
 
   aurora: { label: '🌌 极光', color: '100,200,255', sizeRange: [8, 16], speedRange: [0.1, 0.3], windRange: [-0.2, 0.2], opacityRange: [0.1, 0.4], gravity: 0, shape: 'aurora' },
 };
@@ -36,12 +37,14 @@ function _ecreateParticle(w, h, m) {
   return { x: Math.random() * w, y: m === 'fire' ? h + Math.random() * h * 0.2 : -sz - Math.random() * h * 0.4, r: sz, speed: _erand(cfg.speedRange[0], cfg.speedRange[1]), wind: _erand(cfg.windRange[0], cfg.windRange[1]), opacity: _erand(cfg.opacityRange[0], cfg.opacityRange[1]), gravity: cfg.gravity, rot: Math.random() * Math.PI * 2, rotSpeed: _erand(-0.03, 0.03), phase: Math.random() * Math.PI * 2 };
 }
 
-function _edrawPetal(g, p, c) { g.save(); g.translate(p.x, p.y); g.rotate(p.rot); g.scale(1, 0.4); g.beginPath(); g.arc(0, 0, p.r, 0, Math.PI * 2); g.fillStyle = 'rgba(' + c + ',' + p.opacity + ')'; g.fill(); g.restore(); }
+function _edrawOval(g, p, c) { g.save(); g.translate(p.x, p.y); g.rotate(p.rot); g.scale(1, 0.4); g.beginPath(); g.arc(0, 0, p.r, 0, Math.PI * 2); g.fillStyle = 'rgba(' + c + ',' + p.opacity + ')'; g.fill(); g.restore(); }
 function _edrawHeart(g, p, c) { g.save(); g.translate(p.x, p.y); g.rotate(p.rot); g.scale(p.r * 0.06, p.r * 0.06); g.beginPath(); g.moveTo(0, -3); g.bezierCurveTo(-5, -8, -12, -3, 0, 5); g.bezierCurveTo(12, -3, 5, -8, 0, -3); g.fillStyle = 'rgba(' + c + ',' + p.opacity + ')'; g.fill(); g.restore(); }
 function _edrawConfetti(g, p) { var cs = ['255,100,100','100,200,100','100,150,255','255,200,50','200,100,255','255,150,50']; var cc = cs[Math.floor(Math.abs(p.x + p.y + p.rot) % cs.length)]; g.save(); g.translate(p.x, p.y); g.rotate(p.rot); g.fillStyle = 'rgba(' + cc + ',' + p.opacity + ')'; g.fillRect(-p.r, -p.r * 0.5, p.r * 2, p.r); g.restore(); }
-function _edrawSnowflake(g, p, c) { var r = p.r; g.save(); g.translate(p.x, p.y); g.rotate(p.rot); for (var i = 0; i < 6; i++) { var a = i * Math.PI / 3; g.beginPath(); g.moveTo(0, 0); g.lineTo(Math.cos(a) * r, Math.sin(a) * r); g.strokeStyle = 'rgba(' + c + ',' + p.opacity + ')'; g.lineWidth = Math.max(1, r * 0.25); g.stroke(); for (var j = 1; j <= 2; j++) { var t = j / 3; var bx = Math.cos(a) * r * 0.4 + (Math.cos(a) * r - Math.cos(a) * r * 0.4) * t; var by = Math.sin(a) * r * 0.4 + (Math.sin(a) * r - Math.sin(a) * r * 0.4) * t; var sa = a + (j % 2 === 0 ? -1 : 1) * Math.PI / 6; g.beginPath(); g.moveTo(bx, by); g.lineTo(bx + Math.cos(sa) * r * 0.35, by + Math.sin(sa) * r * 0.35); g.stroke(); } } g.restore(); }
+function _edrawSnowflake(g, p, c) { var r = p.r; g.save(); g.translate(p.x, p.y); g.rotate(p.rot); for (var i = 0; i < 6; i++) { var a = i * Math.PI / 3; g.beginPath(); g.moveTo(0, 0); g.lineTo(Math.cos(a) * r, Math.sin(a) * r); g.strokeStyle = 'rgba(' + c + ',' + p.opacity + ')'; g.lineWidth = Math.max(2, r * 0.3); g.stroke(); var bx = Math.cos(a) * r * 0.5, by = Math.sin(a) * r * 0.5; for (var s = -1; s <= 1; s += 2) { var sa = a + s * Math.PI / 6; g.beginPath(); g.moveTo(bx, by); g.lineTo(bx + Math.cos(sa) * r * 0.4, by + Math.sin(sa) * r * 0.4); g.strokeStyle = 'rgba(' + c + ',' + (p.opacity * 0.7) + ')'; g.lineWidth = Math.max(1.5, r * 0.2); g.stroke(); } } g.restore(); }
 function _edrawStar(g, p, c) { var r = p.r; var cs = ['255,215,0','255,100,100','100,200,255','255,200,50','200,100,255','100,255,100']; var cc = cs[Math.floor(Math.abs(p.x + p.y + p.rot) % cs.length)]; g.save(); g.translate(p.x, p.y); g.rotate(p.rot); g.beginPath(); for (var i = 0; i < 5; i++) { var a = (i * 4 * Math.PI / 5) - Math.PI / 2; g.lineTo(Math.cos(a) * r, Math.sin(a) * r); } g.closePath(); g.fillStyle = 'rgba(' + cc + ',' + p.opacity + ')'; g.fill(); g.restore(); }
 function _edrawMaple(g, p, c) { var r = p.r * 0.8; g.save(); g.translate(p.x, p.y); g.rotate(p.rot); g.scale(1, 0.7); g.beginPath(); for (var i = 0; i < 5; i++) { var a = (i * 2 * Math.PI / 5) - Math.PI / 2; g.lineTo(0, 0); g.lineTo(Math.cos(a) * r, Math.sin(a) * r); var a2 = a + Math.PI / 5; g.lineTo(Math.cos(a2) * r * 0.5, Math.sin(a2) * r * 0.5); } g.closePath(); g.fillStyle = 'rgba(' + c + ',' + p.opacity + ')'; g.fill(); g.restore(); }
+function _edrawSakura(g, p, c) { var r = p.r * 0.6; g.save(); g.translate(p.x, p.y); for (var i = 0; i < 5; i++) { var a = (i * 2 * Math.PI / 5) - Math.PI / 2; g.save(); g.rotate(a); g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(r * 0.4, -r * 0.15, r * 0.7, -r * 0.35); g.quadraticCurveTo(r * 0.85, -r * 0.2, r, 0); g.quadraticCurveTo(r * 0.85, r * 0.2, r * 0.7, r * 0.35); g.quadraticCurveTo(r * 0.4, r * 0.15, 0, 0); g.closePath(); g.fillStyle = 'rgba(' + c + ',' + p.opacity + ')'; g.fill(); g.beginPath(); g.moveTo(r * 0.65, 0); g.lineTo(r, 0); g.strokeStyle = 'rgba(255,255,255,' + (p.opacity * 0.15) + ')'; g.lineWidth = 0.5; g.stroke(); g.restore(); } g.beginPath(); g.arc(0, 0, r * 0.12, 0, Math.PI * 2); g.fillStyle = 'rgba(255,220,220,' + p.opacity + ')'; g.fill(); g.restore(); }
+function _edrawRosePetal(g, p, c) { var r = p.r * 0.75; g.save(); g.translate(p.x, p.y); g.rotate(p.rot); g.beginPath(); g.moveTo(0, -r); g.bezierCurveTo(r * 0.8, -r * 0.6, r * 0.85, r * 0.1, r * 0.4, r * 0.85); g.bezierCurveTo(r * 0.2, r, 0, r * 0.9, 0, r * 0.75); g.bezierCurveTo(0, r * 0.9, -r * 0.2, r, -r * 0.4, r * 0.85); g.bezierCurveTo(-r * 0.85, r * 0.1, -r * 0.8, -r * 0.6, 0, -r); g.closePath(); var grd = g.createRadialGradient(0, r * 0.2, 0, 0, r * 0.2, r * 1.2); grd.addColorStop(0, 'rgba(255,200,200,' + p.opacity + ')'); grd.addColorStop(0.3, 'rgba(240,30,30,' + p.opacity + ')'); grd.addColorStop(0.7, 'rgba(200,10,10,' + p.opacity + ')'); grd.addColorStop(1, 'rgba(120,0,0,' + (p.opacity * 0.8) + ')'); g.fillStyle = grd; g.fill(); g.beginPath(); g.moveTo(0, -r * 0.3); g.quadraticCurveTo(r * 0.15, r * 0.1, 0, r * 0.5); g.quadraticCurveTo(-r * 0.15, r * 0.1, 0, -r * 0.3); g.fillStyle = 'rgba(255,220,220,' + (p.opacity * 0.2) + ')'; g.fill(); g.restore(); }
 function _edrawAurora(g, p) { var w = window.innerWidth; var x = p.x % w; if (x < 0) x += w; var h = window.innerHeight; g.save(); g.globalAlpha = p.opacity * 0.3; var grd = g.createRadialGradient(x, p.y, 0, x, p.y, p.r * 3); var cs = ['100,200,255','150,255,100','255,100,200','100,255,200','200,100,255']; var cc = cs[Math.floor(Math.abs(p.x * 0.01 + p.y * 0.01) % cs.length)]; grd.addColorStop(0, 'rgba(' + cc + ',1)'); grd.addColorStop(0.5, 'rgba(' + cc + ',0.3)'); grd.addColorStop(1, 'rgba(' + cc + ',0)'); g.fillStyle = grd; g.fillRect(x - p.r * 3, p.y - p.r * 3, p.r * 6, p.r * 6); g.restore(); }
 function _edrawFire(g, p, c) { g.save(); g.translate(p.x, p.y); g.rotate(p.rot); g.beginPath(); g.moveTo(0, -p.r); g.bezierCurveTo(p.r, -p.r * 0.3, p.r * 0.6, p.r * 0.5, 0, p.r); g.bezierCurveTo(-p.r * 0.6, p.r * 0.5, -p.r, -p.r * 0.3, 0, -p.r); g.fillStyle = 'rgba(' + c + ',' + p.opacity + ')'; g.fill(); g.beginPath(); g.arc(0, -p.r * 0.2, p.r * 0.4, 0, Math.PI * 2); g.fillStyle = 'rgba(255,255,200,' + (p.opacity * 0.6) + ')'; g.fill(); g.restore(); }
 function _edrawLine(g, p, c) { g.beginPath(); g.moveTo(p.x, p.y - p.r); g.lineTo(p.x, p.y + p.r); g.strokeStyle = 'rgba(' + c + ',' + p.opacity + ')'; g.lineWidth = 1.5; g.stroke(); }
@@ -56,7 +59,7 @@ function startEffect(mode) {
   }
   var newMode = mode || _effectMode;
   if (!_effectModes[newMode]) newMode = 'snow';
-  if (_effectMode === newMode && _effectAnimId) return; // 同模式且已在运行，不重启
+  if (_effectMode === newMode && _effectAnimId) return;
   if (_effectAnimId) { cancelAnimationFrame(_effectAnimId); _effectAnimId = null; }
   _effectMode = newMode;
   var cfg = _effectModes[_effectMode];
@@ -68,6 +71,7 @@ function startEffect(mode) {
   var shape = _effectMode === 'snow' ? 'snowflake' : cfg.shape;
   var color = cfg.color;
   _effectParticles = [];
+
   for (var i = 0; i < _effectCount; i++) _effectParticles.push(_ecreateParticle(w, h, _effectMode));
   function draw() {
     g.clearRect(0, 0, w, h);
@@ -79,7 +83,9 @@ function startEffect(mode) {
       switch (shape) {
         case 'snowflake': _edrawSnowflake(g, p, color); break;
         case 'circle': g.beginPath(); g.arc(p.x, p.y, p.r, 0, Math.PI * 2); g.fillStyle = 'rgba(' + color + ',' + p.opacity + ')'; g.fill(); break;
-        case 'petal': _edrawMaple(g, p, color); break;
+        case 'maple': _edrawMaple(g, p, color); break;
+        case 'petal': _edrawRosePetal(g, p, color); break;
+        case 'sakura': _edrawSakura(g, p, color); break;
         case 'heart': _edrawHeart(g, p, color); break;
         case 'confetti': _edrawConfetti(g, p); break;
         case 'fire': _edrawFire(g, p, color); break;
@@ -108,7 +114,6 @@ var pbCheckLoop = null;
 
 function startPluginBtn() {
   if (pbCheckLoop) return;
-  // 注入 CSS
   if (!document.getElementById('zhs-pb-style')) {
     var s = document.createElement('style');
     s.id = 'zhs-pb-style';
@@ -134,20 +139,16 @@ function startPluginBtn() {
     document.head.appendChild(s);
     pbStyle = s;
   }
-  // 轮询插入按钮（等待标题栏渲染）
   pbCheckLoop = setInterval(function() {
     var nav = document.querySelector('.titlebar-nav');
     if (!nav) return;
     var searchBox = nav.querySelector('.tb-search');
     if (!searchBox) return;
-    // 检查是否已插入
     if (document.getElementById('zhs-pb-btn')) return;
-    // 在搜索框之后插入按钮
     var btn = document.createElement('button');
     btn.id = 'zhs-pb-btn';
     btn.className = 'zhs-plugin-btn nav-btn';
     btn.title = '插件管理';
-    // 工具箱图标 SVG
     btn.innerHTML = [
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"',
       '  stroke-linecap="round" stroke-linejoin="round">',
@@ -159,7 +160,6 @@ function startPluginBtn() {
         ctx.router.push('/main/settings/plugins');
       }
     });
-    // 插入到搜索框后面
     searchBox.parentNode.insertBefore(btn, searchBox.nextSibling);
     pbBtn = btn;
     clearInterval(pbCheckLoop);
@@ -185,14 +185,10 @@ function stopPluginBtn() {
 }
 
 // ===================== 1. 热门排序 =====================
-// 原理：artist-detail 页面中 j.value 初始为 'hot'（热门），
-// 但排序下拉 UI 实际显示为「最新」。需要检测歌手页面的
-// 排序下拉按钮（.artist-sort-trigger），如果显示不是「热门」
-// 则点击展开菜单，再点击「热门」选项（.artist-sort-menu-item.is-active 或含"热门"文本）
-// 点击用原生 click()
 
 var _asTimer = null;
 var _asLoop = null;
+var _asDoneUrl = '';
 
 function startArtistSort() {
   if (_asLoop) return;
@@ -202,28 +198,33 @@ function startArtistSort() {
     
     _asLoop = setInterval(function() {
       try {
-        // 只在歌手详情页工作
         var container = document.querySelector('.artist-detail-container');
-        if (!container) return;
+        if (!container) {
+          _asDoneUrl = '';
+          return;
+        }
         
-        // 找排序触发按钮
+        var currentUrl = window.location.pathname;
+        
+        if (_asDoneUrl === currentUrl) return;
+        
         var trigger = container.querySelector('.artist-sort-trigger');
         if (!trigger) return;
         
-        // 检查当前显示的文本
         var triggerText = trigger.textContent || '';
         var isHot = triggerText.indexOf('热门') !== -1;
-        var isNew = triggerText.indexOf('最新') !== -1;
         
-        if (isHot) return; // 已经是热门，不动
+        if (isHot) {
+          _asDoneUrl = currentUrl;
+          return;
+        }
         
-        // 不是热门 -> 点击展开菜单
         trigger.click();
         
-        // 等 Popover 渲染后，找「热门」选项
+        _asDoneUrl = currentUrl;
+        
         setTimeout(function() {
           try {
-            // 菜单项直接用类名定位
             var menuItems = document.querySelectorAll('.artist-sort-menu-item');
             for (var i = 0; i < menuItems.length; i++) {
               var item = menuItems[i];
@@ -245,73 +246,49 @@ function startArtistSort() {
 function stopArtistSort() {
   if (_asTimer) { clearTimeout(_asTimer); _asTimer = null; }
   if (_asLoop) { clearInterval(_asLoop); _asLoop = null; }
+  _asDoneUrl = '';
 }
 
-// ================= 2. 隐藏自建歌单 =================
+// ================= 2. 收藏歌单自动激活 =================
+// 启动后等 sidebar 渲染，自动点击收藏歌单 tab
+// 点击成功后会一直保持，直到用户手动切回
 
-var hpStyle = null;
-var hpCheckLoop = null;
-var hpInitTimer = null;
-
-function hpInjectCSS() {
-  if (document.getElementById('zhs-hp-style')) return;
-  var s = document.createElement('style');
-  s.id = 'zhs-hp-style';
-  s.textContent = [
-    '.sidebar-playlist-tab:first-child { display: none !important; }',
-    '.sidebar-rail-tab:first-child { display: none !important; }',
-    '.sidebar-tab-divider { display: none !important; }',
-  ].join('\n');
-  document.head.appendChild(s);
-  hpStyle = s;
-}
-
-function hpRemoveCSS() {
-  if (hpStyle) { hpStyle.remove(); hpStyle = null; }
-}
-
-function hpTrySwitch() {
-  var didSwitch = false;
+function hpClickFavorite() {
   var tabs = document.querySelectorAll('.sidebar-playlist-tab');
-  if (tabs.length >= 2) {
-    var favTab = tabs[1];
-    if (!favTab.classList.contains('text-primary')) {
-      favTab.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-      didSwitch = true;
+  for (var i = 0; i < tabs.length; i++) {
+    if (tabs[i].textContent.indexOf('收藏歌单') !== -1) {
+      tabs[i].click();
+      return true;
     }
   }
-  var railPlaylists = document.querySelector('.sidebar-rail-playlists');
-  if (railPlaylists) {
-    var railTabs = railPlaylists.querySelectorAll('.sidebar-rail-tab');
-    if (railTabs.length >= 2) {
-      var favRailTab = railTabs[1];
-      if (!favRailTab.classList.contains('is-active')) {
-        favRailTab.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-        didSwitch = true;
+  var rail = document.querySelector('.sidebar-rail-tabs');
+  if (rail) {
+    var rTabs = rail.querySelectorAll('.sidebar-rail-tab');
+    for (var j = 0; j < rTabs.length; j++) {
+      if (rTabs[j].textContent.indexOf('收藏歌单') !== -1) {
+        rTabs[j].click();
+        return true;
       }
     }
   }
-  return didSwitch;
+  return false;
 }
 
+var _hpTimer = null;
+
 function startHidePlaylist() {
-  if (hpInitTimer || hpCheckLoop) return;
-  hpInjectCSS();
-  var retries = 0;
-  hpInitTimer = setInterval(function() {
-    retries++;
-    if (hpTrySwitch() || retries >= 20) {
-      clearInterval(hpInitTimer);
-      hpInitTimer = null;
-      hpCheckLoop = setInterval(function() { hpTrySwitch(); }, 3000);
+  if (_hpTimer) return;
+  function tryClick(attempts) {
+    if (hpClickFavorite()) { _hpTimer = null; return; }
+    if (attempts < 50) {
+      _hpTimer = setTimeout(function() { tryClick(attempts + 1); }, 200);
     }
-  }, 1000);
+  }
+  setTimeout(function() { tryClick(0); }, 1000); // 给 sidebar 1 秒渲染时间
 }
 
 function stopHidePlaylist() {
-  if (hpCheckLoop) { clearInterval(hpCheckLoop); hpCheckLoop = null; }
-  if (hpInitTimer) { clearInterval(hpInitTimer); hpInitTimer = null; }
-  hpRemoveCSS();
+  if (_hpTimer) { clearTimeout(_hpTimer); _hpTimer = null; }
 }
 
 // ================ 3. 歌词自动隐藏控制栏 ================
@@ -388,9 +365,6 @@ function stopLyricHide() {
 
 // ================== 5. 隐藏顶部听歌识曲按钮 ==================
 
-// ⚠️ 注意：编号 4（右键下载）已独立为 right-click-download 插件
-// 功能编号 5 保持不变，此处保留原始编号以免修改太多其他引用
-
 var hrStyle = null;
 
 function startHideRecognize() {
@@ -408,7 +382,6 @@ function stopHideRecognize() {
 
 // ================== 设置面板 ==================
 
-// 读取存好的功能开关
 var featureState = {};
 
 async function loadFeatureState() {
@@ -432,25 +405,6 @@ async function saveFeatureState() {
   await ctx.storage.set('zhs-features', featureState);
 }
 
-function toggleFeature(id) {
-  featureState[id] = !featureState[id];
-  saveFeatureState();
-  // 即时启停
-  if (id === 'artistSort') {
-    featureState.artistSort ? startArtistSort() : stopArtistSort();
-  } else if (id === 'hidePlaylist') {
-    featureState.hidePlaylist ? startHidePlaylist() : stopHidePlaylist();
-  } else if (id === 'lyricHide') {
-    featureState.lyricHide ? startLyricHide() : stopLyricHide();
-  } else if (id === 'hideRecognize') {
-    featureState.hideRecognize ? startHideRecognize() : stopHideRecognize();
-  } else if (id === 'pluginBtn') {
-    featureState.pluginBtn ? startPluginBtn() : stopPluginBtn();
-  } else if (id === 'effect') {
-    featureState.effect ? startEffect(featureState.effectMode || 'snow') : stopEffect();
-  }
-}
-
 // ================== 入口 ==================
 
 export async function activate(_ctx) {
@@ -465,21 +419,19 @@ export async function activate(_ctx) {
   if (featureState.pluginBtn) startPluginBtn();
   if (featureState.effect) startEffect(featureState.effectMode || 'snow');
 
-  // 注册设置面板 — 使用 render 函数
   var h = ctx.vue.h;
 
   var SettingsComp = ctx.vue.defineComponent({
     name: 'ZhsSettings',
     setup: function() {
-      var effectExpanded = ctx.vue.ref(false);
       var state = ctx.vue.reactive({
         features: [
           { id: 'artistSort', label: '歌手热门排序', desc: '歌手详情页默认按热门排序', enabled: featureState.artistSort },
-          { id: 'hidePlaylist', label: '隐藏自建歌单', desc: '隐藏侧边栏自建歌单及tab按钮', enabled: featureState.hidePlaylist },
+          { id: 'hidePlaylist', label: '收藏歌单自动激活', desc: '启动时自动切换到收藏歌单', enabled: featureState.hidePlaylist },
           { id: 'lyricHide', label: '歌词隐藏控制栏', desc: '歌词全屏时控制栏2秒无操作自动隐藏', enabled: featureState.lyricHide },
           { id: 'hideRecognize', label: '隐藏听歌识曲', desc: '隐藏顶部导航栏的听歌识曲按钮', enabled: featureState.hideRecognize },
-          { id: 'pluginBtn', label: '顶部插件按钮', desc: '搜索框右侧添加插件快捷按钮', enabled: featureState.pluginBtn },
-          { id: 'effect', label: '❄️ 桌面特效', desc: '6种粒子特效', enabled: featureState.effect },
+          { id: 'pluginBtn', label: '顶部插件管理入口', desc: '搜索框右侧添加插件快捷按钮', enabled: featureState.pluginBtn },
+          { id: 'effect', label: '桌面特效', desc: '10种粒子特效', enabled: featureState.effect },
         ],
       });
       var currentEffectMode = ctx.vue.ref(featureState.effectMode || 'snow');
@@ -508,8 +460,6 @@ export async function activate(_ctx) {
         });
       }, { deep: true });
 
-      var modeList = Object.keys(_effectModes);
-
       var effectHotkeys = [
         { mode: 'snow', icon: '❄️' },
         { mode: 'sakura', icon: '🌸' },
@@ -519,6 +469,7 @@ export async function activate(_ctx) {
         { mode: 'rain', icon: '🌧️' },
         { mode: 'leaf', icon: '🍁' },
         { mode: 'colorstar', icon: '⭐' },
+        { mode: 'petal', icon: '🌺' },
         { mode: 'aurora', icon: '🌌' },
       ];
 
@@ -550,8 +501,9 @@ export async function activate(_ctx) {
           ),
           h('div', {
             style: {
-              display: 'flex', 'flex-wrap': 'wrap', gap: '4px',
-              padding: '8px', 'border-radius': '8px',
+              display: 'flex', gap: '3px',
+              padding: '6px 8px', 'border-radius': '8px',
+              'overflow-x': 'auto', 'flex-shrink': '0',
               background: 'var(--card-bg, rgba(255,255,255,0.04))',
             },
           },
@@ -560,7 +512,7 @@ export async function activate(_ctx) {
               var active = currentEffectMode.value === key;
               return h('div', {
                 key: key,
-                style: { display: 'flex', 'align-items': 'center', gap: '3px', cursor: 'pointer', padding: '3px 8px', 'border-radius': '6px', background: active ? 'var(--hover-bg, rgba(128,128,128,0.1))' : 'transparent', 'font-size': '12px', color: active ? 'var(--color-primary, #4caf50)' : 'var(--color-text-secondary)', border: active ? '1px solid var(--color-primary, #4caf50)' : '1px solid transparent' },
+                style: { display: 'flex', 'align-items': 'center', gap: '2px', cursor: 'pointer', padding: '2px 6px', 'border-radius': '5px', background: active ? 'var(--hover-bg, rgba(128,128,128,0.1))' : 'transparent', 'font-size': '11px', color: active ? 'var(--color-primary, #4caf50)' : 'var(--color-text-secondary)', border: active ? '1px solid var(--color-primary, #4caf50)' : '1px solid transparent' },
                 onClick: function() {
                   currentEffectMode.value = key;
                   featureState.effectMode = key;
