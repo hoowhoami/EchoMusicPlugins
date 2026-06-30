@@ -165,33 +165,36 @@ const applyHostSettings = (entry) => {
   r.style.setProperty("--echo-classic-scroller-padding-x", s.textAlign === "left" ? `${s.lyricPadding}px` : "0px");
 };
 
-const EFFECT_HOLD_FRAMES = 3;
-
 const syncHostLayout = (entry, snapshot) => {
   if (!state) return;
   entry.snapshot = snapshot;
   const s = state.settings;
-  const idx = Number(snapshot.currentIndex);
-  const hasCurrent = Number.isFinite(idx) && idx >= 0;
   const rows = entry.host.scroller.querySelectorAll("[data-echo-lyric-row]");
+  const scroller = entry.host.scroller;
 
-  // When the index changes, keep the OLD line as "current" for a few frames
-  // so the scroll animation can bring the new line into view first.  This
-  // prevents the effect from visually jumping backward to the previous line.
-  if (hasCurrent && entry._heldIdx !== idx) {
-    entry._heldIdx = idx;
-    entry._holdFrames = EFFECT_HOLD_FRAMES;
+  // Determine which line is visually centered in the viewport.
+  // Using DOM position instead of snapshot.currentIndex avoids the effect
+  // jumping to a line that hasn't scrolled into view yet.
+  let effectIdx = -1;
+  if (scroller && rows.length > 0) {
+    const scrollerRect = scroller.getBoundingClientRect();
+    const center = scrollerRect.top + scrollerRect.height / 2;
+    let bestDist = Infinity;
+    for (const row of rows) {
+      const rect = row.getBoundingClientRect();
+      const rowCenter = rect.top + rect.height / 2;
+      const dist = Math.abs(rowCenter - center);
+      if (dist < bestDist) {
+        bestDist = dist;
+        effectIdx = Number(row.getAttribute("data-echo-lyric-index") || -1);
+      }
+    }
   }
 
-  let effectIdx;
-  if (entry._holdFrames > 0) {
-    effectIdx = entry._prevEffectIdx ?? idx;
-    entry._holdFrames--;
-  } else {
-    effectIdx = idx;
+  // Fallback: if DOM detection failed, use snapshot index
+  if (effectIdx < 0) {
+    effectIdx = Number(snapshot.currentIndex);
   }
-  entry._prevEffectIdx = effectIdx;
-
   const hasEffect = Number.isFinite(effectIdx) && effectIdx >= 0;
 
   rows.forEach((row) => {
