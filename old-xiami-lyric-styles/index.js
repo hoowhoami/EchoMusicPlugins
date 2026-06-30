@@ -169,32 +169,30 @@ const syncHostLayout = (entry, snapshot) => {
   if (!state) return;
   entry.snapshot = snapshot;
   const s = state.settings;
+  const idx = Number(snapshot.currentIndex);
+  const hasCurrent = Number.isFinite(idx) && idx >= 0;
   const rows = entry.host.scroller.querySelectorAll("[data-echo-lyric-row]");
-  const scroller = entry.host.scroller;
 
-  // Determine which line is visually centered in the viewport.
-  // Using DOM position instead of snapshot.currentIndex avoids the effect
-  // jumping to a line that hasn't scrolled into view yet.
-  let effectIdx = -1;
-  if (scroller && rows.length > 0) {
-    const scrollerRect = scroller.getBoundingClientRect();
-    const center = scrollerRect.top + scrollerRect.height / 2;
-    let bestDist = Infinity;
-    for (const row of rows) {
-      const rect = row.getBoundingClientRect();
-      const rowCenter = rect.top + rect.height / 2;
-      const dist = Math.abs(rowCenter - center);
-      if (dist < bestDist) {
-        bestDist = dist;
-        effectIdx = Number(row.getAttribute("data-echo-lyric-index") || -1);
-      }
+  // When the index changes, force the OLD line's effect to snap away
+  // instantly by overriding its CSS transition for one frame.
+  const prevIdx = entry._prevEffectIdx;
+  if (hasCurrent && prevIdx !== undefined && prevIdx !== idx) {
+    const oldRow = entry.host.scroller.querySelector(
+      `[data-echo-lyric-index="${prevIdx}"]`,
+    );
+    const oldLine = oldRow?.querySelector("[data-echo-lyric-line]");
+    if (oldLine) {
+      oldLine.style.transition = "all 0s";
+      if (entry._clearSnapFrame) cancelAnimationFrame(entry._clearSnapFrame);
+      entry._clearSnapFrame = requestAnimationFrame(() => {
+        oldLine.style.transition = "";
+        entry._clearSnapFrame = 0;
+      });
     }
   }
 
-  // Fallback: if DOM detection failed, use snapshot index
-  if (effectIdx < 0) {
-    effectIdx = Number(snapshot.currentIndex);
-  }
+  const effectIdx = hasCurrent ? idx : (entry._prevEffectIdx ?? idx);
+  entry._prevEffectIdx = effectIdx;
   const hasEffect = Number.isFinite(effectIdx) && effectIdx >= 0;
 
   rows.forEach((row) => {
@@ -220,7 +218,6 @@ const startSyncLoop = (entry) => {
   const tick = () => {
     if (!state) return;
     const snap = entry.host.getSnapshot();
-    entry.snapshot = snap;
     syncHostLayout(entry, snap);
     entry.frame = window.requestAnimationFrame(tick);
   };
@@ -719,6 +716,9 @@ export function deactivate() {
   if (globalFrameId) window.cancelAnimationFrame(globalFrameId);
   globalFrameId = 0;
   globalLastFrameTime = 0;
+  for (const entry of mountedHosts) {
+    if (entry._clearSnapFrame) window.cancelAnimationFrame(entry._clearSnapFrame);
+  }
   effectDispose?.();
   settingsDispose?.();
   settingsStyleDispose?.();
