@@ -165,6 +165,8 @@ const applyHostSettings = (entry) => {
   r.style.setProperty("--echo-classic-scroller-padding-x", s.textAlign === "left" ? `${s.lyricPadding}px` : "0px");
 };
 
+const EFFECT_HOLD_FRAMES = 3;
+
 const syncHostLayout = (entry, snapshot) => {
   if (!state) return;
   entry.snapshot = snapshot;
@@ -173,23 +175,30 @@ const syncHostLayout = (entry, snapshot) => {
   const hasCurrent = Number.isFinite(idx) && idx >= 0;
   const rows = entry.host.scroller.querySelectorAll("[data-echo-lyric-row]");
 
-  // When the current index changes, skip applying the visual effect for one
-  // frame so the scroll animation starts first.  Without this the highlight
-  // briefly appears on the wrong line while the viewport is still mid-scroll.
-  const prevIdx = entry._prevEffectIdx;
-  if (hasCurrent && prevIdx !== undefined && prevIdx !== idx && !entry._skipEffectFrame) {
-    entry._skipEffectFrame = true;
-    entry._prevEffectIdx = idx;
-    return;
+  // When the index changes, keep the OLD line as "current" for a few frames
+  // so the scroll animation can bring the new line into view first.  This
+  // prevents the effect from visually jumping backward to the previous line.
+  if (hasCurrent && entry._heldIdx !== idx) {
+    entry._heldIdx = idx;
+    entry._holdFrames = EFFECT_HOLD_FRAMES;
   }
-  entry._skipEffectFrame = false;
-  if (hasCurrent) entry._prevEffectIdx = idx;
+
+  let effectIdx;
+  if (entry._holdFrames > 0) {
+    effectIdx = entry._prevEffectIdx ?? idx;
+    entry._holdFrames--;
+  } else {
+    effectIdx = idx;
+  }
+  entry._prevEffectIdx = effectIdx;
+
+  const hasEffect = Number.isFinite(effectIdx) && effectIdx >= 0;
 
   rows.forEach((row) => {
     const ri = Number(row.getAttribute("data-echo-lyric-index") || -1);
-    const distance = hasCurrent ? ri - idx : 0;
+    const distance = hasEffect ? ri - effectIdx : 0;
     const abs = Math.abs(distance);
-    const isCurrent = ri === idx;
+    const isCurrent = ri === effectIdx;
 
     const scale = isCurrent ? s.currentScale : Math.max(0.88, 1 - abs * 0.04);
     const opacity = isCurrent ? 1 : Math.max(s.idleOpacity, 1 - abs * 0.22);
