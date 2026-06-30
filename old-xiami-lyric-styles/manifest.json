@@ -1,0 +1,15 @@
+{
+  "id": "old-xiami-lyric-styles",
+  "name": "旧版虾米歌词风格",
+  "version": "1.0.0",
+  "description": "将页面歌词替换为旧版虾米风格：当前行高亮放大带辉光、上下行渐隐、平滑滚动跟随。",
+  "author": "EchoMusic",
+  "icon": "icon.svg",
+  "main": "index.js",
+  "capabilities": {
+    "lyricEffects": true
+  },
+  "requires": {
+    "echoMusicVersion": ">=2.2.6-beta.20"
+  }
+}
