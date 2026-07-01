@@ -2006,7 +2006,6 @@ export async function activate(ctx) {
   });
 
   ctx.dispose(() => { state = null; });
-  ctx.toast.success(`${ctx.manifest.name} 已启用`);
 }
 
 export function deactivate(_ctx) {
