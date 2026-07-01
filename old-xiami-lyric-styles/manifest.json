@@ -1,7 +1,7 @@
 {
   "id": "old-xiami-lyric-styles",
   "name": "旧版虾米歌词风格",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "将页面歌词替换为旧版虾米风格：当前行高亮放大带辉光、上下行渐隐、平滑滚动跟随。",
   "author": "Oneday5799",
   "icon": "icon.svg",

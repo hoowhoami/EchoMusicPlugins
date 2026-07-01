@@ -23,7 +23,7 @@ const mountedHosts = new Set();
 const clamp = (value, min, max) =>
   Math.max(min, Math.min(max, Number(value) || 0));
 
-// ── Spring-based scroll physics (Apple Music style) ──
+// ── Spring-based scroll physics ──
 
 const derivative = (fn) => {
   const h = 0.001;
@@ -166,6 +166,30 @@ const applyHostSettings = (entry) => {
   r.style.setProperty("--echo-classic-scroller-padding-x", s.textAlign === "left" ? `${s.lyricPadding}px` : "0px");
 };
 
+// ── Per-row CSS variable diffing ──
+// Only writes when the value actually changed to avoid triggering
+// unnecessary style recalculations on every frame.
+
+const ROW_PROPS = ["--echo-classic-row-scale", "--echo-classic-row-opacity", "--echo-classic-row-blur", "--echo-classic-row-x", "--echo-classic-row-distance", "--echo-classic-row-is-current"];
+
+const syncRowProps = (row, scale, opacity, blur, distance, isCurrent) => {
+  const cache = row._classicCache || (row._classicCache = {});
+  const vals = {
+    "--echo-classic-row-scale": scale.toFixed(3),
+    "--echo-classic-row-opacity": opacity.toFixed(3),
+    "--echo-classic-row-blur": `${blur.toFixed(1)}px`,
+    "--echo-classic-row-x": "0px",
+    "--echo-classic-row-distance": String(distance),
+    "--echo-classic-row-is-current": isCurrent ? "1" : "0",
+  };
+  for (const prop of ROW_PROPS) {
+    if (cache[prop] !== vals[prop]) {
+      cache[prop] = vals[prop];
+      row.style.setProperty(prop, vals[prop]);
+    }
+  }
+};
+
 const syncHostLayout = (entry, snapshot) => {
   if (!state) return;
   entry.snapshot = snapshot;
@@ -174,8 +198,6 @@ const syncHostLayout = (entry, snapshot) => {
   const hasCurrent = Number.isFinite(idx) && idx >= 0;
   const rows = entry.host.scroller.querySelectorAll("[data-echo-lyric-row]");
 
-  // When the index changes, force the OLD line's effect to snap away
-  // instantly by overriding its CSS transition for one frame.
   const prevIdx = entry._prevEffectIdx;
   if (hasCurrent && prevIdx !== undefined && prevIdx !== idx) {
     const oldRow = entry.host.scroller.querySelector(
@@ -206,28 +228,13 @@ const syncHostLayout = (entry, snapshot) => {
     const opacity = isCurrent ? 1 : Math.max(s.idleOpacity, 1 - abs * 0.22);
     const blur = isCurrent ? 0 : Math.min(abs * 0.6, 2.4);
 
-    row.style.setProperty("--echo-classic-row-scale", scale.toFixed(3));
-    row.style.setProperty("--echo-classic-row-opacity", opacity.toFixed(3));
-    row.style.setProperty("--echo-classic-row-blur", `${blur.toFixed(1)}px`);
-    row.style.setProperty("--echo-classic-row-x", "0px");
-    row.style.setProperty("--echo-classic-row-distance", String(distance));
-    row.style.setProperty("--echo-classic-row-is-current", isCurrent ? "1" : "0");
+    syncRowProps(row, scale, opacity, blur, distance, isCurrent);
   });
 };
 
-const startSyncLoop = (entry) => {
-  const tick = () => {
-    if (!state) return;
-    const snap = entry.host.getSnapshot();
-    syncHostLayout(entry, snap);
-    entry.frame = window.requestAnimationFrame(tick);
-  };
-  entry.frame = window.requestAnimationFrame(tick);
-};
+// ── Spring scroll via setAutoScrollHandler ──
 
 const getSpringParams = (scrollDuration) => {
-  // Map scrollDuration (100-1200ms) to critically-damped spring params
-  // No overshoot — smooth slide to target without bounce
   const t = clamp((scrollDuration - 100) / 1100, 0, 1);
   const mass = 0.8 + t * 0.4;
   const stiffness = 140 - t * 50;
@@ -278,13 +285,13 @@ const startSpringLoop = () => {
 const mountClassicEffect = (host) => {
   const entry = {
     host,
-    frame: 0,
     snapshot: host.getSnapshot(),
     unsubscribe: null,
-    scrollFrame: 0,
-    originalScrollTo: null,
+    scrollDispose: null,
     springScroll: new SpringValue(host.scroller?.scrollTop ?? 0),
     scrollActive: false,
+    _prevEffectIdx: undefined,
+    _clearSnapFrame: 0,
   };
 
   const scroller = host.scroller;
@@ -295,69 +302,52 @@ const mountClassicEffect = (host) => {
   };
 
   if (scroller) {
-    entry.originalScrollTo = scroller.scrollTo.bind(scroller);
-
-    scroller.scrollTo = (options) => {
-      let target = scroller.scrollTop;
-      let instant = false;
-
-      if (typeof options === "object" && options !== null) {
-        if (options.top !== undefined) target = options.top;
-        instant = options.behavior === "auto";
-      } else if (typeof options === "number") {
-        target = options;
-      }
-
-      target = Math.max(
-        0,
-        Math.min(target, scroller.scrollHeight - scroller.clientHeight),
-      );
-
-      if (instant || Math.abs(target - scroller.scrollTop) < 1) {
-        scroller.scrollTop = target;
-        return;
-      }
-
-      if (entry.scrollFrame) {
-        cancelAnimationFrame(entry.scrollFrame);
-        entry.scrollFrame = 0;
-      }
-
-      const scrollDuration = state?.settings?.scrollDuration || 420;
-      const springParams = getSpringParams(scrollDuration);
-
-      entry.springScroll.setParams(springParams);
-      entry.springScroll.setValue(scroller.scrollTop);
-      entry.springScroll.setTarget(target);
-      entry.scrollActive = true;
-      startSpringLoop();
-    };
-  }
-
-  if (scroller) {
     scroller.addEventListener("wheel", onWheel, { passive: true });
   }
+
+  // Intercept host auto-scroll with spring physics
+  entry.scrollDispose = host.setAutoScrollHandler((request) => {
+    if (!state?.settings?.enabled) return false;
+    const { targetTop, smooth, snapshot } = request;
+    const clamped = Math.max(0, Math.min(targetTop, scroller.scrollHeight - scroller.clientHeight));
+
+    if (!smooth || Math.abs(clamped - scroller.scrollTop) < 1) {
+      scroller.scrollTop = clamped;
+      return false;
+    }
+
+    const scrollDuration = state.settings.scrollDuration || 420;
+    const springParams = getSpringParams(scrollDuration);
+
+    entry.springScroll.setParams(springParams);
+    entry.springScroll.setValue(scroller.scrollTop);
+    entry.springScroll.setTarget(clamped);
+    entry.scrollActive = true;
+    startSpringLoop();
+    return true;
+  });
 
   mountedHosts.add(entry);
   applyHostSettings(entry);
   syncHostLayout(entry, entry.snapshot);
+
   entry.unsubscribe = host.subscribe((snap) => {
     entry.snapshot = snap;
     syncHostLayout(entry, snap);
   });
-  startSyncLoop(entry);
 
   return () => {
     mountedHosts.delete(entry);
     entry.unsubscribe?.();
-    if (entry.frame) window.cancelAnimationFrame(entry.frame);
-    if (entry.scrollFrame) window.cancelAnimationFrame(entry.scrollFrame);
+    entry.scrollDispose?.();
     if (scroller) {
-      if (entry.originalScrollTo) scroller.scrollTo = entry.originalScrollTo;
       scroller.removeEventListener("wheel", onWheel);
     }
-    entry.host.root.removeAttribute("data-classic-lyric-enabled");
-    entry.host.root.removeAttribute("data-classic-lyric-marker");
+    const r = entry.host.root;
+    r.removeAttribute("data-classic-lyric-enabled");
+    r.removeAttribute("data-classic-lyric-marker");
+    r.removeAttribute("data-classic-lyric-text-align");
+    r.removeAttribute("data-classic-glow-active");
   };
 };
 
@@ -743,7 +733,7 @@ export async function activate(ctx) {
     id: "old-xiami-lyric-styles",
     title: "旧版虾米歌词风格",
     scope: "page",
-    layer: "decorator",
+    layer: "style",
     className: "echo-classic-lyrics",
     css: EFFECT_CSS,
     mount: mountClassicEffect,
