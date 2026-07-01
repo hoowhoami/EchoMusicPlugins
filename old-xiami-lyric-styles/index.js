@@ -9,8 +9,8 @@ const DEFAULT_SETTINGS = {
   lineHeight: 2.1,
   showMarker: true,
   markerStyle: "dot",
-  textAlign: "center",
-  lyricPadding: 72,
+  textAlign: "left",
+  lyricPadding: 144,
 };
 
 let state = null;
@@ -154,6 +154,7 @@ const applyHostSettings = (entry) => {
   const r = entry.host.root;
   r.dataset.classicLyricEnabled = s.enabled ? "true" : "false";
   r.dataset.classicLyricMarker = s.showMarker ? s.markerStyle : "none";
+  r.dataset.classicLyricTextAlign = s.textAlign;
   r.dataset.classicGlowActive = s.currentGlow > 0 ? "true" : "false";
   r.style.setProperty("--echo-classic-current-scale", String(s.currentScale));
   r.style.setProperty("--echo-classic-glow-size", `${(s.currentGlow * 0.24).toFixed(1)}px`);
@@ -426,7 +427,7 @@ const EFFECT_CSS = `
   opacity: 0.85 !important;
 }
 
-/* Current line marker */
+/* Current line marker — left-aligned (absolute, outside text) */
 .echo-classic-lyrics[data-classic-lyric-enabled="true"][data-classic-lyric-marker="dot"] [data-echo-lyric-line][data-echo-lyric-current="true"]::before {
   content: "";
   position: absolute;
@@ -450,6 +451,43 @@ const EFFECT_CSS = `
   top: 15%;
   bottom: 15%;
   width: 3px;
+  border-radius: 2px;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+  animation: echo-classic-marker-bar 2.4s ease-in-out infinite;
+}
+
+/* Current line marker — center-aligned (inline, flows with text) */
+.echo-classic-lyrics[data-classic-lyric-enabled="true"][data-classic-lyric-text-align="center"][data-classic-lyric-marker="dot"] [data-echo-lyric-line][data-echo-lyric-current="true"]::before {
+  content: none !important;
+}
+
+.echo-classic-lyrics[data-classic-lyric-enabled="true"][data-classic-lyric-text-align="center"][data-classic-lyric-marker="dot"] [data-echo-lyric-line][data-echo-lyric-current="true"] [data-echo-lyric-primary]::before {
+  content: "" !important;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 30px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow:
+    0 0 6px currentColor,
+    0 0 14px currentColor;
+  animation: echo-classic-marker-pulse 1.8s ease-in-out infinite;
+}
+
+.echo-classic-lyrics[data-classic-lyric-enabled="true"][data-classic-lyric-text-align="center"][data-classic-lyric-marker="bar"] [data-echo-lyric-line][data-echo-lyric-current="true"]::before {
+  content: none !important;
+}
+
+.echo-classic-lyrics[data-classic-lyric-enabled="true"][data-classic-lyric-text-align="center"][data-classic-lyric-marker="bar"] [data-echo-lyric-line][data-echo-lyric-current="true"] [data-echo-lyric-primary]::before {
+  content: "" !important;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 30px;
+  width: 3px;
+  height: 1.2em;
   border-radius: 2px;
   background: currentColor;
   box-shadow: 0 0 8px currentColor;
