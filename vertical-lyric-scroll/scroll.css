@@ -1,0 +1,229 @@
+html.plugin-window,
+body.plugin-window {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: transparent !important;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: transparent !important;
+  box-sizing: border-box;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.vls-scroll {
+  --vls-accent: #31cfa1;
+  --vls-opacity: 0.88;
+  --vls-blur: 24px;
+  --vls-font-size: 30px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent 40%),
+    rgba(11, 13, 17, var(--vls-opacity));
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+  color: rgba(255, 255, 255, 0.96);
+  opacity: 1;
+  transition:
+    opacity 220ms ease,
+    background 180ms ease;
+}
+
+.vls-scroll[data-theme="light"] {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.64), rgba(255, 255, 255, 0.22) 44%, transparent),
+    rgba(248, 250, 252, calc(var(--vls-opacity) * 0.92));
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18);
+  color: rgba(15, 23, 42, 0.94);
+}
+
+.vls-scroll.is-hidden {
+  opacity: 0;
+}
+
+.vls-scroll::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--vls-accent) 12%, transparent), transparent 42%);
+  opacity: 0.52;
+  pointer-events: none;
+}
+
+.vls-body {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  min-height: 0;
+  padding: 18px 12px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.vls-scroll.is-locked .vls-body {
+  cursor: default;
+}
+
+.vls-current {
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.vls-primary,
+.vls-secondary,
+.vls-prev,
+.vls-next {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+  min-height: 0;
+}
+
+.vls-primary {
+  font-size: var(--vls-font-size);
+  font-weight: 760;
+  line-height: 1.2;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.vls-secondary {
+  font-size: calc(var(--vls-font-size) * 0.7);
+  font-weight: 580;
+  line-height: 1.25;
+  opacity: 0.62;
+  max-height: 70%;
+  overflow: hidden;
+}
+
+.vls-prev,
+.vls-next {
+  font-size: calc(var(--vls-font-size) * 0.6);
+  font-weight: 560;
+  line-height: 1.25;
+  opacity: 0.4;
+  max-height: 32%;
+  overflow: hidden;
+}
+
+/* 锁定后禁止拖动 */
+.vls-scroll.is-locked .vls-body {
+  -webkit-app-region: no-drag;
+}
+
+.vls-word {
+  display: inline-block;
+}
+
+.vls-controls {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  -webkit-app-region: no-drag;
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.vls-scroll:hover .vls-controls {
+  opacity: 1;
+}
+
+.vls-control {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: currentColor;
+  cursor: pointer;
+  outline: none;
+  padding: 0;
+  transition:
+    background 150ms ease,
+    color 150ms ease;
+}
+
+.vls-scroll[data-theme="light"] .vls-control {
+  background: rgba(15, 23, 42, 0.08);
+}
+
+.vls-control:hover {
+  background: color-mix(in srgb, var(--vls-accent) 26%, rgba(255, 255, 255, 0.12));
+  color: #ffffff;
+}
+
+.vls-control.is-active {
+  background: color-mix(in srgb, var(--vls-accent) 34%, rgba(255, 255, 255, 0.12));
+  color: #ffffff;
+}
+
+.vls-scroll[data-theme="light"] .vls-control:hover,
+.vls-scroll[data-theme="light"] .vls-control.is-active {
+  color: rgba(15, 23, 42, 0.96);
+}
+
+.vls-control.vls-pin,
+.vls-control.vls-pin:hover,
+.vls-control.vls-pin.is-active {
+  background: transparent;
+}
+
+.vls-control.vls-pin:hover,
+.vls-control.vls-pin.is-active {
+  color: color-mix(in srgb, var(--vls-accent) 82%, #ffffff);
+}
+
+.vls-scroll[data-theme="light"] .vls-control.vls-pin:hover,
+.vls-scroll[data-theme="light"] .vls-control.vls-pin.is-active {
+  color: color-mix(in srgb, var(--vls-accent) 70%, rgba(15, 23, 42, 0.96));
+}
+
+.vls-icon {
+  width: 14px;
+  height: 14px;
+  overflow: visible;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vls-scroll,
+  .vls-scroll *,
+  .vls-word {
+    animation: none !important;
+    transition-duration: 1ms !important;
+  }
+}

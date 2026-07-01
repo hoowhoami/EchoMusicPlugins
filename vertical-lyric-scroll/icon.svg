@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="竖幅歌词">
+  <defs>
+    <linearGradient id="vls-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#11151b"/>
+      <stop offset="1" stop-color="#070a0e"/>
+    </linearGradient>
+    <linearGradient id="vls-accent" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4f7cff"/>
+      <stop offset="1" stop-color="#31cfa1"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#vls-bg)"/>
+  <rect x="152" y="112" width="40" height="288" rx="20" fill="rgba(255,255,255,0.92)"/>
+  <rect x="236" y="160" width="40" height="192" rx="20" fill="rgba(255,255,255,0.58)"/>
+  <rect x="320" y="208" width="40" height="96" rx="20" fill="rgba(255,255,255,0.34)"/>
+  <path d="M152 372 Q 256 432 360 372" stroke="url(#vls-accent)" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.88"/>
+  <circle cx="172" cy="112" r="6" fill="#31cfa1"/>
+  <circle cx="256" cy="160" r="6" fill="#31cfa1" opacity="0.72"/>
+  <circle cx="340" cy="208" r="6" fill="#31cfa1" opacity="0.52"/>
+</svg>

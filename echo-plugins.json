@@ -277,6 +277,30 @@
         "player",
         "lyrics"
       ]
+    },
+    {
+      "id": "old-xiami-lyric-styles",
+      "name": "旧版虾米歌词风格",
+      "description": "将页面歌词替换为旧版虾米风格：当前行高亮放大带辉光、上下行渐隐、平滑滚动跟随。",
+      "author": "Oneday5799",
+      "path": "old-xiami-lyric-styles",
+      "repo": "https://github.com/oneday5799/EchoMusicPlugins",
+      "homepage": "https://github.com/oneday5799/EchoMusicPlugins/tree/main/old-xiami-lyric-styles",
+      "tags": [
+        "appearance",
+        "lyrics",
+        "lyric-effects"
+      ]
+    },
+    {
+      "id": "vertical-lyric-scroll",
+      "path": "vertical-lyric-scroll",
+      "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/vertical-lyric-scroll",
+      "tags": [
+        "lyrics",
+        "floating-window",
+        "appearance"
+      ]
     }
   ]
 }

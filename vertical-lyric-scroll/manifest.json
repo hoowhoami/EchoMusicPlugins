@@ -1,0 +1,38 @@
+{
+  "id": "vertical-lyric-scroll",
+  "name": "竖幅歌词",
+  "version": "1.0.0",
+  "description": "竖排文字桌面歌词浮窗",
+  "author": "小栀",
+  "icon": "icon.svg",
+  "main": "index.js",
+  "requires": {
+    "echoMusicVersion": ">=2.2.7-beta.9"
+  },
+  "contributes": {
+    "windows": [
+      {
+        "id": "scroll",
+        "type": "floating",
+        "title": "竖幅歌词",
+        "main": "scroll.js",
+        "style": "scroll.css",
+        "defaultWidth": 200,
+        "defaultHeight": 560,
+        "minWidth": 180,
+        "minHeight": 360,
+        "maxWidth": 280,
+        "maxHeight": 760,
+        "position": "center",
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": true,
+        "movable": true,
+        "rememberBounds": true,
+        "allowOutsideWorkArea": true,
+        "acceptFirstMouse": true
+      }
+    ]
+  }
+}
