@@ -241,7 +241,7 @@
     {
       "id": "xiaotoolkit",
       "name": "小功能",
-      "description": "热门排序 + 隐藏歌单 + 歌词隐藏控制栏和工具栏 + 隐藏听歌识曲 + 顶部插件按钮 + 桌面特效",
+      "description": "热门排序 + 收藏歌单自动切换 + 单击播放 + 歌词沉浸 + 顶部插件按钮 + 桌面特效(10种) + 搜索历史 + 多账号切换",
       "author": "Max8808",
       "path": "",
       "repo": "https://github.com/Max8808/xiaotoolkit",
