@@ -320,7 +320,7 @@
       "name": "LX 洛雪助手",
       "description": "基于 LX Music（洛雪音乐）音源脚本为 EchoMusic 提供多平台音乐搜索、歌词解析与下载能力",
       "author": "小二白白",
-      "path": "echo-lx-music-function",
+      "path": "",
       "repo": "https://github.com/virlbai/echo-lx-music-function",
       "homepage": "https://github.com/virlbai/echo-lx-music-function",
       "tags": [
