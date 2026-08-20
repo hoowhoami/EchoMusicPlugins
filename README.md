@@ -183,7 +183,7 @@ pnpm exec electron . --safe-mode
 
 `runtime.desktopLyric` 可选。设为 `true` 后，EchoMusic 会在桌面歌词窗口中单独加载该插件。桌面歌词同样是独立窗口，只需要影响主窗口或 mini 窗口的插件不应开启该项。需要改变原桌面歌词窗口的布局、动效或窗口尺寸时，应同时使用 `ctx.lyricEffects.register({ scope: "desktop", ... })` 和 `ctx.desktopLyric`。
 
-`capabilities.audioSource` 可选。插件如需通过 `ctx.player.audioSource.register()` 接管特定歌曲的播放 URL 解析，必须显式设为 `true`。适合 WebDAV、本地媒体库、私有网盘或其他自定义来源的歌曲。
+`capabilities.audioSource` 可选。插件如需通过 `ctx.player.audioSource.register()` 在指定兜底阶段解析音源，或使用 `transform` 检查、替换、加工内置/插件音源，必须显式设为 `true`。适合 WebDAV、本地媒体库、私有网盘、代理签名或其他自定义来源的歌曲。
 
 `capabilities.kugouApi` 可选。插件如需通过 `ctx.kugou` 调用 EchoMusic 内置的酷狗音乐、歌词、写真和推荐接口，必须显式设为 `true`。插件只传业务参数，不需要也不能传入 token、dfid、mid 等鉴权信息；宿主会使用当前 EchoMusic 登录态和设备态完成请求。
 
@@ -313,7 +313,7 @@ export default {
 | `ctx.app` / `ctx.router` / `ctx.pinia`                                | 主应用实例、路由和 Pinia 实例                                                                                                                                                                                                                                                                                                                                                                                 |
 | `ctx.stores.player` / `.playlist` / `.lyric` / `.settings` / `.theme` | 应用核心 store                                                                                                                                                                                                                                                                                                                                                                                                |
 | `ctx.player`                                                          | 播放控制便捷 API：`currentTrack/currentTrackId/currentTime/duration/isPlaying/isLoading/playbackState/playbackTargetTrackId/playbackRate/volume/playMode`（computed）、`play()`、`playTrack()`、`playSong()`、`playNext()`、`playLast()`、`replaceQueueAndPlay()`、`toggle()`、`stop()`、`next()`、`prev()`、`dislikePersonalFm()`、`seek(time)`、`setVolume(vol)`、`setPlaybackRate(rate)`、`setPlayMode(mode)`、`setAudioQuality(quality)`、`setAudioEffect(effect)`、`toggleLyricView(open?)`。其中 `currentTime` 是播放引擎最近一次推送的离散进度（秒），适合状态展示和控制逻辑；歌词逐帧渲染请使用 `ctx.lyricEffects` 的 `timelineMs`，或 `ctx.lyrics` / `ctx.nowPlaying` 快照里的 `playback.currentTime + updatedAt + playbackRate` 自行推算。 |
-| `ctx.player.audioSource.register(options)`                            | 注册自定义音源解析器，要求 manifest 声明 `capabilities.audioSource: true`                                                                                                                                                                                                                                                                                                                                     |
+| `ctx.player.audioSource.register(options)`                            | 注册分阶段音源解析器或音源 `transform`，支持在曲库解析前、曲库失败后、云盘失败后接管，以及加工/拒绝任意阶段产生的候选；要求 manifest 声明 `capabilities.audioSource: true`                                                                                                                                                                         |
 | `ctx.audio.spectrum`                                                  | 读取或订阅音频频谱：`getStatus()`、`getSnapshot()`、`subscribe(options, handler)`，要求 manifest 声明 `capabilities.audioSpectrum: true`                                                                                                                                                                                                                                                                      |
 | `ctx.playlist`                                                        | 播放队列便捷 API：读取当前队列/队列歌曲、替换队列、追加歌曲、播放歌曲、加入下一首（插队）、排队候播（顺序追加到下一首播放队列末尾）、清空、移除、重排和切换活动队列                                                                                                                                                                                                                                                                                             |
 | `ctx.lyric` / `ctx.settings`                                          | 歌词 store 与设置 store 的快捷引用，等价于 `ctx.stores.lyric` / `ctx.stores.settings`                                                                                                                                                                                                                                                                                                                         |
@@ -1242,7 +1242,12 @@ export function activate(ctx) {
 
 ### 自定义音源解析
 
-插件可以注册音源解析器，在 EchoMusic 内置酷狗/云盘解析前优先处理特定歌曲。典型场景是 WebDAV 或私有媒体库：歌曲对象已经带有自己的播放地址，不应再走酷狗 `hash` 解析。
+插件可以把 `resolve` 放到指定的播放器兜底位置，也可以使用 `transform` 检查、替换、加工或拒绝已经解析成功的候选音源。典型场景包括：
+
+- WebDAV、本地媒体库等歌曲已经带有自己的地址，应在曲库解析前直接接管；
+- 酷狗 `song/url` 不可用时，再向自定义服务请求备用地址；
+- 为官方地址补充代理签名、备用 URL 或其他播放参数；
+- 拒绝当前环境不支持的格式，让 EchoMusic 继续尝试下一候选。
 
 使用前在 manifest 中声明：
 
@@ -1254,41 +1259,141 @@ export function activate(ctx) {
 }
 ```
 
-注册示例：
+#### 解析顺序与 position
+
+普通曲库歌曲的解析顺序为：
+
+```text
+before-catalog
+  → catalog（内置 song/url，包括音质、音效和兼容候选）
+  → after-catalog
+  → cloud
+  → final-fallback
+```
+
+`position` 只控制当前注册项的 `resolve` 在哪一级执行：
+
+| position | 执行时机 | 典型用途 |
+| --- | --- | --- |
+| `before-catalog` | 内置 `song/url` 之前；默认值 | WebDAV、本地媒体库、完全自定义来源 |
+| `after-catalog` | 所有曲库候选均不可用或被 transform 拒绝后，云盘兜底之前 | 非 VIP 备用源、第三方曲库兜底 |
+| `final-fallback` | 曲库和云盘均不可用后 | 最后的代理、转码或提示音源 |
+
+云盘页面歌曲或用户明确选择云盘来源时，宿主可以优先使用云盘地址；有效候选仍会经过 `transform`。旧插件不填写 `position` 时仍按 `before-catalog` 执行。
+
+曲库解析失败后接管的示例：
 
 ```js
 export function activate(ctx) {
   ctx.player.audioSource.register({
-    id: "webdav",
+    id: "listen-together-fallback",
+    position: "after-catalog",
     order: 100,
     match({ track }) {
-      return track.source === "webdav" && Boolean(track.audioUrl);
+      return track.source === "listen-together";
     },
-    resolve({ track }) {
-      return {
-        url: track.audioUrl,
-        quality: "flac",
-        effect: "none",
-      };
+    async resolve({ track, quality, position }) {
+      const result = await resolveFallbackUrl({
+        hash: track.originalHash || track.hash,
+        mixSongId: track.mixSongId || track.albumAudioId,
+        quality,
+      });
+
+      if (!result?.url) return null;
+      return { url: result.url, urls: result.urls, quality, effect: "none" };
     },
   });
 }
 ```
 
-`resolve` 可以返回字符串 URL，也可以返回对象：
+`resolve` 上下文包含：
+
+```ts
+{
+  track: Song;
+  quality: "128" | "320" | "flac" | "high" | "viper_tape";
+  effect: AudioEffectValue;
+  forceReload: boolean;
+  position: "before-catalog" | "after-catalog" | "final-fallback";
+}
+```
+
+`resolve` 可以返回字符串 URL，也可以返回音源对象：
 
 ```ts
 {
   url: string;
-  quality?: "128" | "320" | "flac" | "high" | "super";
-  effect?: "none";
+  urls?: string[];
+  source?: { url: string; audioTrackId?: number | null };
+  sources?: Array<{ url: string; audioTrackId?: number | null }>;
+  audioTrackId?: number | null;
+  quality?: "128" | "320" | "flac" | "high" | "viper_tape";
+  effect?: AudioEffectValue;
   loudness?: { lufs: number; gain: number; peak: number };
+  sourceKind?: "catalog" | "cloud" | "plugin";
+  noticeCode?: string;
 }
 ```
 
 `match` 和 `resolve` 都可以是异步函数。多个插件同时注册时，`order` 越小越先执行；第一个返回有效 `url` 的 resolver 会接管本次播放。返回 `null`、`undefined`、`false` 或空 URL 时，EchoMusic 会继续尝试下一个插件 resolver，最后回到内置解析流程。
 
 为了让没有酷狗 `hash` 的自定义歌曲可以进入播放流程，插件导入的歌曲至少应提供 `audioUrl`，并设置可识别的 `source`，例如 `source: "webdav"`。如果播放地址需要临时签名，也可以在 `resolve` 中按需刷新 URL 后返回。
+
+#### transform：加工或拒绝候选
+
+`transform` 会在候选解析成功后、交给播放器之前执行。它与 `resolve.position` 相互独立；可以通过 `transformStages` 限制处理范围：
+
+| stage | 候选来源 |
+| --- | --- |
+| `before-catalog` | 前置插件 resolver |
+| `catalog` | 内置 `song/url` |
+| `after-catalog` | 曲库之后的插件 resolver |
+| `cloud` | 云盘 |
+| `final-fallback` | 最终插件 resolver |
+
+如果省略 `transformStages`，该 transform 会处理全部阶段。可传单个阶段或阶段数组。
+
+```js
+export function activate(ctx) {
+  ctx.player.audioSource.register({
+    id: "catalog-url-transform",
+    order: 50,
+    transformStages: ["catalog", "cloud"],
+    match({ track }) {
+      return Boolean(track.hash);
+    },
+    async transform({ track, source, stage, forceReload }) {
+      // source 是前一个步骤已经标准化的候选，包含 url、urls、quality、
+      // effect、loudness、sourceKind 等字段。
+      const signedUrl = await signPlaybackUrl(source.url, {
+        track,
+        stage,
+        forceReload,
+      });
+
+      if (!signedUrl) return null;
+      return {
+        url: signedUrl,
+        // 显式保留原地址作为播放器的下一候选；只返回字符串则完全替换地址。
+        urls: [signedUrl, ...(source.urls || [])],
+      };
+    },
+  });
+}
+```
+
+`transform` 的返回值语义：
+
+| 返回值 | 行为 |
+| --- | --- |
+| `null` / `undefined` | 不修改当前候选 |
+| 字符串 URL | 替换主 URL，并清除原候选列表 |
+| 部分音源对象 | 与当前候选合并；返回 `url` 时可同时用 `urls` 指定完整候选顺序 |
+| `false` | 拒绝当前候选，继续同阶段的下一解析器/曲库候选，再进入后续兜底 |
+
+多个 transform 同样按 `order` 从小到大串行执行，后一个 transform 会收到前一个 transform 的结果。某个 transform 抛出异常时，宿主会上报插件运行时错误并保留当时仍有效的候选，不会因为单个插件异常中断播放。
+
+只使用 transform 的注册项可以省略 `resolve`；只使用 resolve 的旧写法也保持兼容。每个注册项至少要提供二者之一。若需要同时提供二者，请注意：`position` 只约束 `resolve`，`transformStages` 才约束 `transform`。
 
 ### 自定义歌词解析
 
