@@ -357,7 +357,7 @@
         "fm"
       ]
     },
-     {
+    {
       "id": "echo-remote",
       "name": "局域网远程遥控",
       "description": "通过局域网 WebUI 遥控 EchoMusic,支持进度拖拽、切歌、音量、歌曲信息与封面显示",
@@ -368,6 +368,25 @@
       "tags": [
         "remote-control",
         "webui"
+      ]
+    },
+	{
+      "id": "taskbar-lyric-with-spectrum-visualizer",
+      "name": "任务栏歌词+频谱",
+      "description": "在任务栏上方显示当前歌词和专辑封面的透明浮窗,自动检测任务栏位置并贴靠,实现了频谱功能,使用前请先安装频谱可视化",
+      "author": "etn",
+      "path": "",
+      "repo": "https://github.com/easy-to-notice/Scripts/tree/main/taskbar-lyric-with-spectrum-visualizer",
+      "homepage": "https://github.com/easy-to-notice/Scripts/tree/main/taskbar-lyric-with-spectrum-visualizer",
+      "tags": [
+        "floating-window",
+        "lyrics",
+        "lyric-effects",
+		"audio",
+        "spectrum",
+        "player-bar",
+        "mini-player",
+        "lyrics"
       ]
     }
   ]
