@@ -192,6 +192,7 @@ ctx.nowPlaying.command("lyricOffsetReset");
 
 - `getBounds()`
 - `move({ x, y, width, height })`
+- `drag.bind(element)`：推荐的窗口拖动方式。宿主自动处理 pointer capture、取消、失焦、卸载、多屏 DPI 和 session 生命周期。
 - `hide()`
 - `close()`
 - `setIgnoreMouseEvents(ignore)`
@@ -207,7 +208,7 @@ await ctx.window.showOnTop(); // 抢焦点，浮到最前
 await ctx.window.showOnTop({ focus: false }); // 不打断输入，仅抬层
 ```
 
-拖拽和锁定穿透应由插件窗口 UI 自己决定，但最终移动与穿透仍通过宿主 IPC 执行。
+拖拽推荐使用 `ctx.window.drag.bind(element)`，不需要自行计算窗口坐标；锁定穿透仍由插件窗口 UI 自己决定。
 
 `setAlwaysOnTop()` 适合在插件浮窗内部做“图钉”按钮。macOS 下宿主会在需要时重建窗口，以便在 `panel` 和普通浮窗类型之间切换；插件应先把置顶状态写入自己的设置，再调用该方法。
 
@@ -227,6 +228,7 @@ async function togglePin(ctx, settings) {
 - `hide(windowId)`
 - `close(windowId)`
 - `move(windowId, bounds)`
+- `drag.bind(windowId, element)`：将 DOM 元素绑定为拖动区域。
 - `getBounds(windowId)`
 - `setIgnoreMouseEvents(windowId, ignore)`
 - `showOnTop(windowId, options?)`

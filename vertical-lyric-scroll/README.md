@@ -15,4 +15,4 @@
 
 浮窗通过 `contributes.windows` 声明，由主进程创建；插件入口在 `index.js`，浮窗入口在 `scroll.js`。
 
-窗口拖动通过 JS pointer 事件 + `ctx.window.move` 实现（不使用 `-webkit-app-region: drag`），以规避透明窗口在 Windows 上的拖动残影；拖动时传完整 `{ x, y, width, height }`，width/height 使用按下时记录的固定值，避免 DPI 舍入导致尺寸漂移。
+窗口拖动建议使用 `ctx.window.drag.bind(element)`，由宿主统一处理 pointer capture、取消、失焦、卸载、多屏 DPI 和窗口尺寸稳定性；不需要自行计算窗口坐标，也不应继续通过 `ctx.window.move` 模拟拖动。
