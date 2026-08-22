@@ -169,6 +169,7 @@ pnpm exec electron . --safe-mode
     "lyrics": false,
     "process": false,
     "sqlite": false,
+    "unrestrictedNetwork": false,
     "webServer": false
   },
   "requires": {
@@ -201,6 +202,8 @@ pnpm exec electron . --safe-mode
 `capabilities.process` 可选。插件如需通过 `ctx.process.launch()` 启动插件目录内的本地辅助程序，必须显式设为 `true`。未声明时主程序会拒绝启动进程。该能力只表示插件可以请求启动自己目录内的可执行文件，不表示启动后的程序运行在沙箱内。
 
 `capabilities.sqlite` 可选。插件如需通过 `ctx.sqlite` 使用 SQLite 私有数据库，必须显式设为 `true`。数据库由宿主创建在 EchoMusic 用户数据目录下，并按插件 id 隔离；插件只能访问自己的命名数据库，不能传入任意本地路径。
+
+`capabilities.unrestrictedNetwork` 可选。插件如需通过 `ctx.net.request()` 使用主进程 Axios 的 Node.js HTTP adapter，或自定义浏览器 Fetch 不允许设置的 `User-Agent`、`Referer`、`Cookie`、`Origin`、`Host` 等请求头，必须显式设为 `true`。该能力不受浏览器 CORS 和禁止头规则约束，也允许访问本机及内网地址；只应在确实需要精确控制请求的插件中声明。普通 Web 请求继续使用 `ctx.net.fetch()`。
 
 `capabilities.webServer` 可选。插件如需通过 `ctx.webServer.listen()` 创建可被其他本机软件访问的 HTTP 页面或接口，必须显式设为 `true`。服务默认只监听 `127.0.0.1`，适合 Wallpaper Engine、OBS、本地脚本或其他桌面软件读取 EchoMusic 当前状态、歌词页面、可视化页面等场景。插件禁用、卸载、安全模式、运行上下文销毁或应用退出时，宿主会自动释放端口。
 
@@ -356,7 +359,8 @@ export default {
 | `ctx.scroll`                                                          | 页面滚动容器 API：`queryContainers()`、`getCurrentContainer()`、`getState(el)`、`scrollToTop(el?)`、`scrollToBottom(el?)`、`observeContainers(handler)`；用于滚动增强插件，避免依赖宿主内部 DOM 类名                                                                                                                                                                                                            |
 | `ctx.windows`                                                         | 控制当前插件在 manifest 中声明的独立窗口：`show()`、`hide()`、`close()`、`move()`、`getBounds()`、`setIgnoreMouseEvents()` 等；推荐使用 `drag.bind(windowId, element)` 绑定可拖动 DOM 元素，宿主会处理多屏/DPI、pointer capture、取消、窗口卸载和 session 生命周期；`drag.start/move/end/cancel` 仅用于需要自行管理 pointer 生命周期的高级场景；`show()` 可临时覆盖 `alwaysOnTop` 和 `allowOutsideWorkArea` |
 | `ctx.toast`                                                           | 应用内提示：`info()`、`success()`、`warning()`、`danger()`                                                                                                                                                                                                                                                                                                                                                    |
-| `ctx.net.fetch`                                                       | 网络请求                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `ctx.net.fetch`                                                       | 浏览器 Fetch 网络请求，返回标准 `Response`，遵循 Chromium 的 CORS、Cookie、缓存和禁止请求头规则                                                                                                                                                                                                                                                                                                               |
+| `ctx.net.request(options)`                                            | 主进程 Axios Node 请求，支持覆盖 `User-Agent`、`Referer`、`Cookie`、`Origin`、`Host` 等请求头，并按 `responseType` 返回 `response.data`；要求 manifest 声明 `capabilities.unrestrictedNetwork: true`                                                                                                                                                                                                                |
 | `ctx.electron`                                                        | 当前 preload 暴露的 Electron API                                                                                                                                                                                                                                                                                                                                                                              |
 | `ctx.electron.platform`                                               | 当前平台：`'darwin'` / `'win32'` / `'linux'`                                                                                                                                                                                                                                                                                                                                                                  |
 | `ctx.css.inject(cssText, options?)`                                   | 注入全局 CSS，禁用插件时自动清理                                                                                                                                                                                                                                                                                                                                                                              |
@@ -844,6 +848,97 @@ await ctx.sqlite.deleteDatabase("library");
 - 单条 SQL 最长约 256 KB；单次查询最多 5000 行，结果 JSON 最大约 8 MB；单个事务最多 500 条语句。
 - 插件禁用、安全模式、运行上下文销毁或 EchoMusic 退出时会自动关闭连接；插件卸载时会删除该插件的 SQLite 私有目录。
 - `ctx.sqlite` 也会出现在插件浮窗上下文中，适合浮窗直接读取或写入当前插件的配置、缓存和历史数据。
+
+### 原生网络请求
+
+`ctx.net.fetch` 保留浏览器 Fetch 语义，适合普通 Web API、标准 `Request` / `Response`、流式响应，以及需要浏览器 Cookie、缓存或 CORS 行为的场景。它运行在 Chromium 渲染进程中，因此 JavaScript 设置的 `User-Agent`、`Referer`、`Cookie`、`Host` 等禁止请求头可能被忽略。
+
+需要精确控制请求头时，插件可以使用 `ctx.net.request(options)`。该接口通过主进程 Axios 的 Node.js HTTP adapter 发出请求，不经过 Chromium。Axios 只是宿主内部实现，插件不直接持有 Axios 实例。使用前必须在 `manifest.json` 中声明：
+
+```json
+{
+  "capabilities": {
+    "unrestrictedNetwork": true
+  }
+}
+```
+
+GET 示例：
+
+```js
+const response = await ctx.net.request({
+  url: "https://api.example.com/data",
+  headers: {
+    "User-Agent": "EchoPlugin/1.0",
+    Referer: "https://example.com/",
+    Cookie: "session=example",
+  },
+  responseType: "json",
+});
+
+if (response.status < 200 || response.status >= 300) {
+  throw new Error(`HTTP ${response.status} ${response.statusText}`);
+}
+
+const data = response.data;
+```
+
+请求选项：
+
+| 字段 | 类型 | 默认值与说明 |
+| --- | --- | --- |
+| `url` | `string` | 必填，仅支持 `http:` / `https:`；URL 中不能包含用户名或密码，鉴权请显式设置 `Authorization` |
+| `method` | `string` | 默认 `GET` |
+| `headers` | `Record<string, string \| string[]>` 或 `[string, string][]` | 对象形式适合普通使用；二元组数组可表达重复字段，发送前由 Axios 规范化 |
+| `body` | JSON 对象或数组、`string`、`ArrayBuffer`、`ArrayBufferView`、`Blob` 或 `{ type: "base64", data: string }` | 普通对象和数组自动按 JSON 发送；Blob 自动补充自身 MIME 类型，显式请求头优先 |
+| `responseType` | `"json" \| "text" \| "arrayBuffer"` | 默认 `json`；决定 `response.data` 的解析方式 |
+| `timeoutMs` | `number` | 默认 30000；设为 `0` 可禁用请求超时 |
+| `maxResponseBytes` | `number` | 默认 32 MiB；设为 `0` 可禁用缓冲响应体上限 |
+| `maxRedirects` | `number` | 默认 5；设为 `0` 不跟随重定向 |
+| `decompress` | `boolean` | 默认 `true`，自动解压 gzip、deflate 和 br，并移除响应中的 `content-encoding`；设为 `false` 时通常应配合 `responseType: "arrayBuffer"` |
+| `tls.rejectUnauthorized` | `boolean` | HTTPS 证书校验，默认 `true` |
+| `tls.servername` | `string` | 可选的 TLS SNI 名称，不改变 HTTP `Host` |
+| `signal` | `AbortSignal` | 可选；取消后主进程会中止对应请求 |
+
+请求头遵循 Axios Node adapter 的行为。插件显式提供同名头时始终以插件值为准：
+
+| 请求头 | 默认行为 |
+| --- | --- |
+| `Host` / `Connection` | 由 Node.js 根据目标和连接生成，插件可以覆盖 |
+| `Content-Type` | Axios 根据请求体推断；普通对象和数组默认使用 JSON，Blob 使用自身 MIME 类型，插件可以覆盖 |
+| `Content-Length` | Axios 根据序列化后的实际字节数生成，插件可以覆盖；手动值必须与实际字节数一致 |
+| `User-Agent` / `Accept` / `Accept-Encoding` | Axios Node adapter 可能提供默认值，插件可以覆盖 |
+| `Referer` / `Cookie` / `Origin` | 默认不添加，插件可以显式设置 |
+| `Sec-Fetch-*` | 不注入 Chromium 浏览器指纹头，插件可以显式设置 |
+
+返回值采用精简的 Axios 响应语义：
+
+| 字段 | 说明 |
+| --- | --- |
+| `url` | 最终响应 URL；跟随重定向后为最后一个 URL |
+| `status` / `statusText` | HTTP 状态码与状态文本 |
+| `headers` | Axios 规范化后的响应头对象，字段名为小写；`set-cookie` 等字段可能是字符串数组 |
+| `data` | `responseType: "json"` 时尝试解析 JSON（无效 JSON 可能保留为字符串），`"text"` 时为字符串，`"arrayBuffer"` 时为 `ArrayBuffer` |
+
+HTTP 4xx/5xx 会正常返回，插件应检查 `response.status`；网络错误、超时、取消、重定向超限和响应体超限会拒绝 Promise。接口不会保存 Cookie，也不会把一次响应的 `Set-Cookie` 自动带到下一次请求。跨域或 HTTPS 降级重定向时，Axios 底层会移除 `Authorization`、`Cookie` 等敏感请求头；如需逐跳完全控制请求，请设置 `maxRedirects: 0` 并自行处理 `Location`。
+
+每个插件最多同时进行 64 个原生网络请求，插件禁用、运行上下文销毁或 `AbortSignal` 取消时，未完成请求会被中止。该能力允许访问公网、本机和内网服务，不提供 SSRF 目标限制。
+
+POST JSON 示例：
+
+```js
+const response = await ctx.net.request({
+  url: "https://api.example.com/resolve",
+  method: "POST",
+  headers: {
+    "User-Agent": "EchoPlugin/1.0",
+    Referer: "https://example.com/",
+  },
+  body: { songId: "123" },
+});
+```
+
+`ctx.net.request` 会在主进程缓冲并解析完整响应，适合业务 API、签名接口和需要精确请求头的请求；大型媒体流仍应使用可流式消费的 URL 或 `ctx.net.fetch`，不要通过 IPC 把整首音频缓冲到内存。
 
 ### 本地 Web 服务
 

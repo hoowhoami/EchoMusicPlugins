@@ -81,7 +81,7 @@ export function deactivate(ctx) {
 
 ## 窗口入口
 
-窗口脚本可以导出 `activateWindow(ctx)`、`activate(ctx)` 或默认函数。入口上下文独立于主插件上下文，只提供窗口渲染所需的 Vue、容器、私有存储、CSS 注入、Now Playing、字体、宿主图标、主题图标封面、音频频谱、受控文件、本地进程、本地 Web 服务和当前窗口控制 API。
+窗口脚本可以导出 `activateWindow(ctx)`、`activate(ctx)` 或默认函数。入口上下文独立于主插件上下文，只提供窗口渲染所需的 Vue、容器、私有存储、CSS 注入、Now Playing、字体、宿主图标、主题图标封面、音频频谱、受控文件、本地进程、原生网络、本地 Web 服务和当前窗口控制 API。
 
 ```js
 export function activateWindow(ctx) {
@@ -256,6 +256,8 @@ await ctx.host.showOnTop('main', { focus: false }); // 仅抬层，不抢焦点
 `'mini-player'` 仅在 mini 播放器已开启时生效；未开启时返回 `{ ok: false, error: 'mini 播放器未开启' }`，不会自动切换到 mini 模式。桌面歌词有独立的置顶开关，不在 `ctx.host` 覆盖范围内。
 
 窗口入口中的 `ctx.process` 与主插件入口一致，也只会绑定当前插件 id。使用前仍需在 manifest 中声明 `capabilities.process: true`，详见主 README 的“本地辅助进程”章节。
+
+窗口入口中的 `ctx.net.fetch` / `ctx.net.request` 与主插件入口一致。需要绕过 Chromium 禁止请求头规则并精确设置 `User-Agent`、`Referer`、`Cookie` 等字段时，应声明 `capabilities.unrestrictedNetwork: true` 后使用 `ctx.net.request`；该接口由主进程 Axios Node adapter 执行，请求会在窗口销毁时自动取消，详细语义见主 README 的“原生网络请求”章节。
 
 窗口入口中的 `ctx.audio.spectrum` 与主插件入口一致，用于读取或订阅音频频谱。使用前仍需在 manifest 中声明 `capabilities.audioSpectrum: true`。
 
