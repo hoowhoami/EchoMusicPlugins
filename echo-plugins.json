@@ -375,8 +375,8 @@
       "name": "任务栏歌词+频谱",
       "description": "在任务栏上方显示当前歌词和专辑封面的透明浮窗,自动检测任务栏位置并贴靠,实现了频谱功能,使用前请先安装频谱可视化",
       "author": "etn",
-      "path": "",
-      "repo": "https://github.com/easy-to-notice/Scripts/tree/main/taskbar-lyric-with-spectrum-visualizer",
+      "path": "taskbar-lyric-with-spectrum-visualizer",
+      "repo": "https://github.com/easy-to-notice/Scripts",
       "homepage": "https://github.com/easy-to-notice/Scripts/tree/main/taskbar-lyric-with-spectrum-visualizer",
       "tags": [
         "floating-window",
