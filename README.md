@@ -100,6 +100,7 @@ EchoMusic 支持在线插件源和本地插件。用户可以在"插件管理"�
 
 扩展文档：
 
+- [任务中心 API](docs/tasks.md)：注册后台任务、更新进度、处理中止信号，并定义完成、失败和中止后的保留策略。
 - [插件浮窗与 Now Playing](docs/windows.md)：声明独立桌面浮窗、订阅当前播放/歌词快照、发送播放与歌词命令。
 - [插件窗口拖动与缩放](docs/plugin-window-resize.md)：使用 `ctx.window.resize.bind()` / `ctx.windows.resize.bind()` 添加统一窗口缩放交互。
 - `water-lyrics`：页面歌词动效示例，演示 `ctx.lyricEffects.register()` 的 style/decorator 接入方式。
@@ -127,7 +128,7 @@ EchoMusic --safe-mode
 pnpm exec electron . --safe-mode
 ```
 
-插件禁用或卸载前，运行时会调用插件的 `deactivate(ctx)`，随后清理通过宿主 API 注册的页面、统一设置、歌曲菜单、命令、事件监听、应用内快捷键、系统级全局快捷键、`ctx.css.inject` 样式、manifest 样式、`ctx.lyricEffects` 歌词动效、`ctx.ui.mount` / `ctx.ui.teleport` 挂载组件和 `ctx.dom.observe` 监听。插件如果直接修改 DOM 或注册了宿主无法感知的全局副作用，应通过 `ctx.dispose(() => ...)` 或 `deactivate(ctx)` 自行归还。
+插件禁用或卸载时，运行时会先使 `ctx.tasks` 任务会话失效并移除任务，再调用插件的 `deactivate(ctx)`，随后清理通过宿主 API 注册的页面、统一设置、歌曲菜单、命令、事件监听、应用内快捷键、系统级全局快捷键、`ctx.css.inject` 样式、manifest 样式、`ctx.lyricEffects` 歌词动效、`ctx.ui.mount` / `ctx.ui.teleport` 挂载组件和 `ctx.dom.observe` 监听。插件如果直接修改 DOM 或注册了宿主无法感知的全局副作用，应通过 `ctx.dispose(() => ...)` 或 `deactivate(ctx)` 自行归还。
 
 卸载插件会删除插件目录、移除启用状态、清除已追踪的插件私有 KV 数据，并清除与该插件相关的最近故障记录。
 
