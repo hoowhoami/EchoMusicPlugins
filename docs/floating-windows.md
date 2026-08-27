@@ -1,4 +1,4 @@
-# 插件浮窗与 Now Playing
+# 插件独立浮窗与 Now Playing
 
 EchoMusic 插件可以声明独立的受控浮窗，用于桌面悬浮歌词、轻量工具条等场景。浮窗由主进程创建，插件只提供窗口入口脚本和样式，不直接接触 `BrowserWindow`。
 
@@ -193,6 +193,8 @@ ctx.nowPlaying.command("lyricOffsetReset");
 - `getBounds()`
 - `move({ x, y, width, height })`
 - `drag.bind(element)`：推荐的窗口拖动方式。宿主自动处理 pointer capture、取消、失焦、卸载、多屏 DPI 和 session 生命周期。
+- `resize.bind(element, options)`：将元素绑定为当前浮窗的缩放手柄。
+- `onCancelInteraction(handler)`：监听宿主取消当前拖动或缩放会话。
 - `hide()`
 - `close()`
 - `setIgnoreMouseEvents(ignore)`
@@ -209,6 +211,35 @@ await ctx.window.showOnTop({ focus: false }); // 不打断输入，仅抬层
 ```
 
 拖拽推荐使用 `ctx.window.drag.bind(element)`，不需要自行计算窗口坐标；锁定穿透仍由插件窗口 UI 自己决定。
+
+### 拖动与缩放
+
+窗口入口使用 `ctx.window.drag` / `ctx.window.resize` 控制当前浮窗；主插件入口使用 `ctx.windows.drag` / `ctx.windows.resize` 并显式传入已声明的 `windowId`。绑定方法返回清理函数，宿主也会在窗口销毁或插件停用时结束交互会话。
+
+```js
+const disposeDrag = ctx.window.drag.bind(titlebar);
+const disposeResize = ctx.window.resize.bind(resizeHandle, {
+  direction: "se",
+  minWidth: 240,
+  minHeight: 120,
+});
+
+ctx.dispose(disposeDrag);
+ctx.dispose(disposeResize);
+```
+
+`direction` 支持 `n`、`ne`、`e`、`se`、`s`、`sw`、`w`、`nw`。最终边界会同时受到绑定参数、Manifest 窗口描述和显示器范围约束；Manifest 设置 `resizable: false` 时，宿主会拒绝缩放会话。
+
+主入口控制其他已声明浮窗时传入窗口 id：
+
+```js
+const dispose = ctx.windows.resize.bind("panel", resizeHandle, {
+  direction: "e",
+});
+ctx.dispose(dispose);
+```
+
+`startResize`、`resize`、`endResize` 和 `cancelResize` 等低层 API 继续保留给特殊集成；常规插件应优先使用 `bind()`，避免自行维护 pointer capture、失焦取消和多屏 DPI 状态。
 
 `setAlwaysOnTop()` 适合在插件浮窗内部做“图钉”按钮。macOS 下宿主会在需要时重建窗口，以便在 `panel` 和普通浮窗类型之间切换；插件应先把置顶状态写入自己的设置，再调用该方法。
 
@@ -229,6 +260,7 @@ async function togglePin(ctx, settings) {
 - `close(windowId)`
 - `move(windowId, bounds)`
 - `drag.bind(windowId, element)`：将 DOM 元素绑定为拖动区域。
+- `resize.bind(windowId, element, options)`：将 DOM 元素绑定为缩放手柄。
 - `getBounds(windowId)`
 - `setIgnoreMouseEvents(windowId, ignore)`
 - `showOnTop(windowId, options?)`
@@ -255,9 +287,9 @@ await ctx.host.showOnTop('main', { focus: false }); // 仅抬层，不抢焦点
 
 `'mini-player'` 仅在 mini 播放器已开启时生效；未开启时返回 `{ ok: false, error: 'mini 播放器未开启' }`，不会自动切换到 mini 模式。桌面歌词有独立的置顶开关，不在 `ctx.host` 覆盖范围内。
 
-窗口入口中的 `ctx.process` 与主插件入口一致，也只会绑定当前插件 id。使用前仍需在 manifest 中声明 `capabilities.process: true`，详见主 README 的“本地辅助进程”章节。
+窗口入口中的 `ctx.process` 与主插件入口一致，也只会绑定当前插件 id。使用前仍需在 manifest 中声明 `capabilities.process: true`，详见[插件开发指南的“本地辅助进程”章节](plugin-development.md#本地辅助进程)。
 
-窗口入口中的 `ctx.net.fetch` / `ctx.net.request` 与主插件入口一致。需要绕过 Chromium 禁止请求头规则并精确设置 `User-Agent`、`Referer`、`Cookie` 等字段时，应声明 `capabilities.unrestrictedNetwork: true` 后使用 `ctx.net.request`；该接口由主进程 Axios Node adapter 执行，请求会在窗口销毁时自动取消，详细语义见主 README 的“原生网络请求”章节。
+窗口入口中的 `ctx.net.fetch` / `ctx.net.request` 与主插件入口一致。需要绕过 Chromium 禁止请求头规则并精确设置 `User-Agent`、`Referer`、`Cookie` 等字段时，应声明 `capabilities.unrestrictedNetwork: true` 后使用 `ctx.net.request`；该接口由主进程 Axios Node adapter 执行，请求会在窗口销毁时自动取消，详细语义见[插件开发指南的“原生网络请求”章节](plugin-development.md#原生网络请求)。
 
 窗口入口中的 `ctx.audio.spectrum` 与主插件入口一致，用于读取或订阅音频频谱。使用前仍需在 manifest 中声明 `capabilities.audioSpectrum: true`。
 
