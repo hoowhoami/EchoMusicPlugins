@@ -88,6 +88,17 @@
       ]
     },
     {
+      "id": "webdav-backup",
+      "path": "webdav-backup",
+      "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/webdav-backup",
+      "tags": [
+        "backup",
+        "restore",
+        "webdav",
+        "sync"
+      ]
+    },
+    {
       "id": "webdav-music",
       "path": "webdav-music",
       "repo": "https://github.com/oneday5799/EchoMusicPlugins",

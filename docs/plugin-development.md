@@ -102,6 +102,7 @@ EchoMusic 支持在线插件源和本地插件。用户可以在"插件管理"�
 
 - [任务中心 API](tasks.md)：注册后台任务、更新进度、处理中止信号，并定义完成、失败和中止后的保留策略。
 - [独立浮窗与 Now Playing](floating-windows.md)：声明独立桌面浮窗、订阅当前播放/歌词快照、发送播放与歌词命令，并接入统一拖动与缩放交互。
+- [备份与恢复 API](backups.md)：创建、检查和恢复备份，以及将 WebDAV 等存储提供方接入主程序设置页。
 - `water-lyrics`：页面歌词动效示例，演示 `ctx.lyricEffects.register()` 的 style/decorator 接入方式。
 - `apple-music-lyrics`：页面歌词 AMLL 渲染示例，演示通过 decorator 扩展点接入 `@applemusic-like-lyrics/core`。
 
@@ -162,6 +163,7 @@ pnpm exec electron . --safe-mode
   "capabilities": {
     "audioSource": false,
     "audioSpectrum": false,
+    "backups": false,
     "kugouApi": false,
     "kugouVerification": false,
     "localFiles": false,
@@ -192,6 +194,8 @@ pnpm exec electron . --safe-mode
 `capabilities.kugouVerification` 可选。插件如需把酷狗接口返回的 `ssaCode` / `eventId` 交给 EchoMusic 完成安全验证，必须显式设为 `true`。插件只发起验证请求，不需要传 `v_type`，也不直接处理验证码提交、登录确认或 `sid` / `edt` 生成；宿主会通过 `/get/verify/info` 读取验证类型，并复用主程序验证弹窗，验证通过后插件应自行重试原业务请求。
 
 `capabilities.audioSpectrum` 可选。插件如需通过 `ctx.audio.spectrum` 读取或订阅音频频谱数据，必须显式设为 `true`。该能力会启动系统音频捕获订阅，请只在可视化或音频分析插件中声明。
+
+`capabilities.backups` 可选。插件如需通过 `ctx.backups.create/inspect/restore` 操作 EchoMusic 备份，或通过 `ctx.backups.registerProvider()` 将 WebDAV、网盘等存储位置接入主程序“备份与恢复”界面，必须显式设为 `true`。插件只负责备份数据的存储和传输，归档格式、内容校验、恢复回滚和重启由宿主管理。完整接口与 WebDAV 示例见 [备份与恢复 API](backups.md)。
 
 `capabilities.localFiles` 可选。插件如需通过 `ctx.fs.listFiles()` 扫描本地音乐目录，通过 `ctx.fs.readTextFile()` / `ctx.fs.readFileBytes()` / `ctx.fs.readAudioMetadata()` 读取用户本地文件信息，或通过 `ctx.fs.writeFile()` 写入插件目录内文件，必须显式设为 `true`。适合本地播放、本地媒体库、CUE/M3U/LRC 解析、插件生成缓存图片或图标等场景。播放音频文件本身应使用 `ctx.fs.getFileUrl()` 转成 URL 后交给播放器，不要通过 IPC 读取整首音频。
 
@@ -328,6 +332,7 @@ export default {
 | `ctx.kugou`                                                           | 调用 EchoMusic 内置酷狗业务接口，要求 manifest 声明 `capabilities.kugouApi: true`；鉴权信息由宿主自动注入                                                                                                                                                                                                                                                                                                     |
 | `ctx.kugouVerification.request(challenge)`                            | 请求宿主完成酷狗安全验证，`challenge` 可传 `ssaCode` / `eventId` 字符串，或 `{ eventId }` / `{ ssaCode }`；插件不需要传 `v_type`，宿主会按 `eventId` 读取验证信息；返回 `{ ok: true, eventId }` 或 `{ ok: false, error, canceled? }`，要求 manifest 声明 `capabilities.kugouVerification: true`                                                                                                                                    |
 | `ctx.storage`                                                         | 插件私有 KV 存储，按插件 id 自动隔离                                                                                                                                                                                                                                                                                                                                                                          |
+| `ctx.backups`                                                         | EchoMusic 备份 API：`create/inspect/restore` 提供命令式操作，`registerProvider()` 可把插件存储接入主程序备份恢复 UI；要求 manifest 声明 `capabilities.backups: true`，详见 [备份与恢复 API](backups.md)                                                                                                                                                                                                         |
 | `ctx.dialog.selectDirectory(options?)`                                | 打开系统文件夹选择对话框，返回 `{ canceled, paths }`                                                                                                                                                                                                                                                                                                                                                          |
 | `ctx.dialog.selectFiles(options?)`                                    | 打开系统文件选择对话框，支持 `multiple` 和 `filters`                                                                                                                                                                                                                                                                                                                                                          |
 | `ctx.fs.listFiles(directory, options?)`                               | 枚举本地文件，支持 `recursive`、`limit`、`kinds`、`extensions`、`includeHidden` 和 `maxDepth`，要求 manifest 声明 `capabilities.localFiles: true`                                                                                                                                                                                                                                                             |

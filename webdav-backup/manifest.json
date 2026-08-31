@@ -1,0 +1,16 @@
+{
+  "id": "webdav-backup",
+  "name": "WebDAV 备份",
+  "version": "1.0.0",
+  "description": "将 EchoMusic 的应用设置、插件及插件数据备份到自己的 WebDAV 存储。",
+  "author": "EchoMusic",
+  "icon": "icon.svg",
+  "main": "webdav.mjs",
+  "capabilities": {
+    "backups": true,
+    "unrestrictedNetwork": true
+  },
+  "requires": {
+    "echoMusicVersion": ">=2.3.1-beta.20"
+  }
+}
