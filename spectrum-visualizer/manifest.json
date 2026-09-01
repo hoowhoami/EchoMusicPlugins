@@ -1,8 +1,8 @@
 {
   "id": "spectrum-visualizer",
   "name": "频谱可视化",
-  "version": "1.0.3",
-  "description": "在播放栏、mini 播放器和歌词页底部控制区显示跟随音频变化的频谱背景。",
+  "version": "1.1.0",
+  "description": "在播放栏、Mini 播放器和歌词页显示柱状、波形、雾状与中心镜像频谱。",
   "author": "EchoMusic",
   "icon": "icon.svg",
   "main": "index.js",
@@ -13,6 +13,6 @@
     "audioSpectrum": true
   },
   "requires": {
-    "echoMusicVersion": ">=2.2.9-beta.1"
+    "echoMusicVersion": ">=2.3.1-beta.21"
   }
 }
