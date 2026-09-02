@@ -401,4 +401,14 @@
       ]
     }
   ]
-}
+},
+{
+      "id": "echo-auto-vip",
+      "name": "自动领会员",
+      "description": "打开 EchoMusic 自动领取酷狗概念版每日畅听会员，支持连续领取未来多天；每日自动升级概念会员；自动完成每日 8 次看广告领时长（时长自动叠加概念会员有效期）。可在插件管理页设置全部参数。",
+      "author": "YTDB0",
+      "path": "",
+      "repo": "https://github.com/YTDB0/echo-auto-vip",
+      "homepage": "https://github.com/YTDB0/echo-auto-vip",
+      "tags": ["vip", "automation", "toolkit", "member"]
+    }
