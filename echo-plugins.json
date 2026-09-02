@@ -6,129 +6,75 @@
       "id": "example-plugin",
       "path": "example-plugin",
       "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/example-plugin",
-      "tags": [
-        "demo",
-        "lyrics",
-        "floating-window",
-        "now-playing"
-      ]
+      "tags": ["demo", "lyrics", "floating-window", "now-playing"]
     },
     {
       "id": "water-lyrics",
       "path": "water-lyrics",
       "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/water-lyrics",
-      "tags": [
-        "appearance",
-        "lyrics",
-        "lyric-effects",
-        "animation"
-      ]
+      "tags": ["appearance", "lyrics", "lyric-effects", "animation"]
     },
     {
       "id": "apple-music-lyrics",
       "path": "apple-music-lyrics",
       "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/apple-music-lyrics",
-      "tags": [
-        "appearance",
-        "lyrics",
-        "lyric-effects",
-        "animation"
-      ]
+      "tags": ["appearance", "lyrics", "lyric-effects", "animation"]
     },
     {
       "id": "page-motion",
       "path": "page-motion",
       "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/page-motion",
-      "tags": [
-        "appearance",
-        "page-transition",
-        "animation"
-      ]
+      "tags": ["appearance", "page-transition", "animation"]
     },
     {
       "id": "scroll-assistant",
       "path": "scroll-assistant",
       "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/scroll-assistant",
-      "tags": [
-        "navigation",
-        "scroll",
-        "productivity"
-      ]
+      "tags": ["navigation", "scroll", "productivity"]
     },
     {
       "id": "cover-fallback",
       "path": "cover-fallback",
       "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/cover-fallback",
-      "tags": [
-        "appearance",
-        "cover",
-        "mini-player"
-      ]
+      "tags": ["appearance", "cover", "mini-player"]
     },
     {
       "id": "lyric-info-scroll",
       "path": "lyric-info-scroll",
       "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/lyric-info-scroll",
-      "tags": [
-        "lyrics",
-        "player-bar",
-        "mini-player"
-      ]
+      "tags": ["lyrics", "player-bar", "mini-player"]
     },
     {
       "id": "spectrum-visualizer",
       "path": "spectrum-visualizer",
       "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/spectrum-visualizer",
-      "tags": [
-        "audio",
-        "spectrum",
-        "player-bar",
-        "mini-player",
-        "lyrics"
-      ]
+      "tags": ["audio", "spectrum", "player-bar", "mini-player", "lyrics"]
     },
     {
       "id": "webdav-backup",
       "path": "webdav-backup",
       "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/webdav-backup",
-      "tags": [
-        "backup",
-        "restore",
-        "webdav",
-        "sync"
-      ]
+      "tags": ["backup", "restore", "webdav", "sync"]
     },
     {
       "id": "webdav-music",
       "path": "webdav-music",
       "repo": "https://github.com/oneday5799/EchoMusicPlugins",
       "homepage": "https://github.com/oneday5799/EchoMusicPlugins/tree/main/webdav-music",
-      "tags": [
-        "audio-source",
-        "webdav",
-        "cloud-music"
-      ]
+      "tags": ["audio-source", "webdav", "cloud-music"]
     },
     {
       "id": "echomusic-vinyl-rotation",
       "path": "echomusic-vinyl-rotation",
       "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/echomusic-vinyl-rotation",
-      "tags": [
-        "appearance",
-        "lyrics",
-        "cover"
-      ]
+      "tags": ["appearance", "lyrics", "cover"]
     },
     {
       "id": "Lyrics-bridge",
       "path": "",
       "repo": "https://github.com/EchoMusic-org/Lyrics-bridge",
       "homepage": "https://github.com/EchoMusic-org/Lyrics-bridge",
-      "tags": [
-        "WinIsland",
-        "lyrics",
-        "server"
-      ]
+      "tags": ["WinIsland", "lyrics", "server"]
     },
     {
       "id": "echo-miuix-plugin",
@@ -138,11 +84,7 @@
       "path": "",
       "repo": "https://github.com/SkyShadowHero/echo-miuix-plugin",
       "homepage": "https://github.com/SkyShadowHero/echo-miuix-plugin",
-      "tags": [
-        "appearance",
-        "miuix",
-        "theme"
-      ]
+      "tags": ["appearance", "miuix", "theme"]
     },
     {
       "id": "echo-liquid-glass",
@@ -152,11 +94,7 @@
       "path": "",
       "repo": "https://github.com/SkyShadowHero/echo-liquid-glass",
       "homepage": "https://github.com/SkyShadowHero/echo-liquid-glass",
-      "tags": [
-        "appearance",
-        "liquidglass",
-        "theme"
-      ]
+      "tags": ["appearance", "liquidglass", "theme"]
     },
     {
       "id": "taskbar-lyric",
@@ -166,11 +104,7 @@
       "path": "",
       "repo": "https://github.com/yaoyaoprincess/taskbar-lyric",
       "homepage": "https://github.com/yaoyaoprincess/taskbar-lyric",
-      "tags": [
-        "floating-window",
-        "lyrics",
-        "lyric-effects"
-      ]
+      "tags": ["floating-window", "lyrics", "lyric-effects"]
     },
     {
       "id": "plugin-panel",
@@ -180,9 +114,7 @@
       "path": "",
       "repo": "https://github.com/yaoyaoprincess/plugin-panel",
       "homepage": "https://github.com/yaoyaoprincess/plugin-panel",
-      "tags": [
-        "plugin-panel"
-      ]
+      "tags": ["plugin-panel"]
     },
     {
       "id": "cover-color-lyric",
@@ -192,12 +124,7 @@
       "path": "",
       "repo": "https://github.com/rinnki-L/cover-color-lyric",
       "homepage": "https://github.com/rinnki-L/cover-color-lyric",
-      "tags": [
-        "appearance",
-        "lyrics",
-        "lyric-effects",
-        "cover"
-      ]
+      "tags": ["appearance", "lyrics", "lyric-effects", "cover"]
     },
     {
       "id": "custom-icon",
@@ -207,11 +134,7 @@
       "path": "custom-icon",
       "repo": "https://github.com/oneday5799/EchoMusicPlugins",
       "homepage": "https://github.com/oneday5799/EchoMusicPlugins/tree/main/custom-icon",
-      "tags": [
-        "appearance",
-        "icons",
-        "splash-screen"
-      ]
+      "tags": ["appearance", "icons", "splash-screen"]
     },
     {
       "id": "echo_music-blue_archive-theme",
@@ -221,10 +144,7 @@
       "path": "",
       "repo": "https://github.com/venti1112/echo_music-blue_archive-theme",
       "homepage": "https://github.com/venti1112/echo_music-blue_archive-theme",
-      "tags": [
-        "theme",
-        "beautify"
-      ]
+      "tags": ["theme", "beautify"]
     },
     {
       "id": "echo-local-simple",
@@ -234,9 +154,7 @@
       "path": "",
       "repo": "https://github.com/SkyShadowHero/echo-local-simple",
       "homepage": "https://github.com/SkyShadowHero/echo-local-simple",
-      "tags": [
-        "local"
-      ]
+      "tags": ["local"]
     },
     {
       "id": "Record-player",
@@ -246,9 +164,7 @@
       "path": "",
       "repo": "https://github.com/EchoMusic-org/Record-player",
       "homepage": "https://github.com/EchoMusic-org/Record-player",
-      "tags": [
-        "beautify"
-      ]
+      "tags": ["beautify"]
     },
     {
       "id": "channel-wander",
@@ -258,9 +174,7 @@
       "path": "",
       "repo": "https://github.com/EchoMusic-org/channel-wander",
       "homepage": "https://github.com/EchoMusic-org/channel-wander",
-      "tags": [
-        "wander"
-      ]
+      "tags": ["wander"]
     },
     {
       "id": "player-frontend",
@@ -270,10 +184,7 @@
       "path": "",
       "repo": "https://github.com/EchoMusic-org/player-frontend",
       "homepage": "https://github.com/EchoMusic-org/player-frontend",
-      "tags": [
-        "player",
-        "lyrics"
-      ]
+      "tags": ["player", "lyrics"]
     },
     {
       "id": "old-xiami-lyric-styles",
@@ -283,21 +194,13 @@
       "path": "old-xiami-lyric-styles",
       "repo": "https://github.com/oneday5799/EchoMusicPlugins",
       "homepage": "https://github.com/oneday5799/EchoMusicPlugins/tree/main/old-xiami-lyric-styles",
-      "tags": [
-        "appearance",
-        "lyrics",
-        "lyric-effects"
-      ]
+      "tags": ["appearance", "lyrics", "lyric-effects"]
     },
     {
       "id": "vertical-lyric-scroll",
       "path": "vertical-lyric-scroll",
       "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/vertical-lyric-scroll",
-      "tags": [
-        "lyrics",
-        "floating-window",
-        "appearance"
-      ]
+      "tags": ["lyrics", "floating-window", "appearance"]
     },
     {
       "id": "folia-style",
@@ -307,11 +210,7 @@
       "path": "folia-style",
       "repo": "https://github.com/oneday5799/EchoMusicPlugins",
       "homepage": "https://github.com/oneday5799/EchoMusicPlugins/tree/main/folia-style",
-      "tags": [
-        "player",
-        "lyrics",
-        "lyric-effects"
-      ]
+      "tags": ["player", "lyrics", "lyric-effects"]
     },
     {
       "id": "xiaotoolkit",
@@ -321,11 +220,7 @@
       "path": "",
       "repo": "https://github.com/Max8808/xiaotoolkit",
       "homepage": "https://github.com/Max8808/xiaotoolkit",
-      "tags": [
-        "toolkit",
-        "appearance",
-        "productivity"
-      ]
+      "tags": ["toolkit", "appearance", "productivity"]
     },
     {
       "id": "apple-music-style",
@@ -335,12 +230,7 @@
       "path": "apple-music-style",
       "repo": "https://github.com/oneday5799/EchoMusicPlugins",
       "homepage": "https://github.com/oneday5799/EchoMusicPlugins/tree/main/apple-music-style",
-      "tags": [
-        "player",
-        "lyrics",
-        "lyric-effects",
-        "appearance"
-      ]
+      "tags": ["player", "lyrics", "lyric-effects", "appearance"]
     },
     {
       "id": "cloud-priority",
@@ -350,10 +240,7 @@
       "path": "cloud-priority",
       "repo": "https://github.com/oneday5799/EchoMusicPlugins",
       "homepage": "https://github.com/oneday5799/EchoMusicPlugins/tree/main/cloud-priority",
-      "tags": [
-        "player",
-        "now-playing"
-      ]
+      "tags": ["player", "now-playing"]
     },
     {
       "id": "tingfm-radio",
@@ -363,10 +250,7 @@
       "path": "",
       "repo": "https://github.com/EchoMusic-org/tingfm-radio",
       "homepage": "https://github.com/EchoMusic-org/tingfm-radio",
-      "tags": [
-        "radio",
-        "fm"
-      ]
+      "tags": ["radio", "fm"]
     },
     {
       "id": "echo-remote",
@@ -376,12 +260,9 @@
       "path": "",
       "repo": "https://github.com/yuanqian108/echo-remote",
       "homepage": "https://github.com/yuanqian108/echo-remote",
-      "tags": [
-        "remote-control",
-        "webui"
-      ]
+      "tags": ["remote-control", "webui"]
     },
-	{
+    {
       "id": "taskbar-lyric-with-spectrum-visualizer",
       "name": "任务栏歌词+频谱",
       "description": "在任务栏上方显示当前歌词和专辑封面的透明浮窗,自动检测任务栏位置并贴靠,实现了频谱功能,使用前请先安装频谱可视化",
@@ -389,16 +270,17 @@
       "path": "taskbar-lyric-with-spectrum-visualizer",
       "repo": "https://github.com/easy-to-notice/Scripts",
       "homepage": "https://github.com/easy-to-notice/Scripts/tree/main/taskbar-lyric-with-spectrum-visualizer",
-      "tags": [
-        "floating-window",
-        "lyrics",
-        "lyric-effects",
-		"audio",
-        "spectrum",
-        "player-bar",
-        "mini-player",
-        "lyrics"
-      ]
+      "tags": ["floating-window", "lyrics", "lyric-effects", "audio", "spectrum", "player-bar", "mini-player", "lyrics"]
+    },
+    {
+      "id": "echo-auto-vip",
+      "name": "自动领会员",
+      "description": "打开 EchoMusic 自动领取酷狗概念版每日畅听会员，支持连续领取未来多天；每日自动升级概念会员；自动完成每日 8 次看广告领时长（时长自动叠加概念会员有效期）。可在插件管理页设置全部参数。",
+      "author": "YTDB",
+      "path": "",
+      "repo": "https://github.com/YTDB0/echo-auto-vip",
+      "homepage": "https://github.com/YTDB0/echo-auto-vip",
+      "tags": ["vip", "automation", "toolkit", "member"]
     }
   ]
 }
