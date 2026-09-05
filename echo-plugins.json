@@ -399,6 +399,21 @@
         "mini-player",
         "lyrics"
       ]
+    },
+	{
+      "id": "auto-team-vip",
+      "name": "自动组队领VIP",
+      "description": "自动参加概念版官方活动“组队瓜分酷狗概念版畅听VIP”并自动组队，活动详情请自行查看官方说明。",
+      "author": "Oneday5799",
+      "path": "auto-team-vip",
+      "repo": "https://github.com/oneday5799/EchoMusicPlugins",
+      "homepage": "https://github.com/oneday5799/EchoMusicPlugins/tree/main/auto-team-vip",
+      "tags": [
+        "auto",
+        "claim",
+        "team",
+		"vip"
+      ]
     }
   ]
 }
