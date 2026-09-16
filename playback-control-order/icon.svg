@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="播放控件排序">
+  <rect width="96" height="96" rx="22" fill="#f0a05a"/>
+  <path d="M22 30h52M22 48h52M22 66h52" stroke="#fff8ef" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="39" cy="30" r="8" fill="#8b3f2a" stroke="#fff8ef" stroke-width="4"/>
+  <circle cx="61" cy="48" r="8" fill="#8b3f2a" stroke="#fff8ef" stroke-width="4"/>
+  <circle cx="47" cy="66" r="8" fill="#8b3f2a" stroke="#fff8ef" stroke-width="4"/>
+</svg>
