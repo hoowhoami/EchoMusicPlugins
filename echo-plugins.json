@@ -462,6 +462,21 @@
         "ui",
         "appearance"
       ]
+    },
+    {
+      "id": "mouse-gesture",
+      "name": "鼠标手势控制",
+      "description": "使用鼠标手势控制软件的播放、导航和滚动等操作。",
+      "author": "Oneday5799",
+      "path": "mouse-gesture",
+      "repo": "https://github.com/oneday5799/EchoMusicPlugins",
+      "homepage": "https://github.com/oneday5799/EchoMusicPlugins/tree/main/mouse-gesture",
+      "tags": [
+        "gesture",
+        "mouse",
+        "productivity",
+        "player"
+      ]
     }
   ]
 }
