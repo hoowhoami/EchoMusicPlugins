@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
+
+const manifest = JSON.parse(
+  await readFile(new URL("../playback-control-order/manifest.json", import.meta.url), "utf8"),
+);
 
 const api = await import(
   "data:text/javascript;base64," +
@@ -85,4 +90,8 @@ test("playlist category visibility is independent from fixed playlist item visib
   const categoryHidden = api.normalizeSettings({ sidebar: { playlists: { visible: false } } });
   assert.equal(categoryHidden.sidebar.playlists.visible, false);
   assert.deepEqual(categoryHidden.sidebar.playlists.hidden, []);
+});
+
+test("playback control order does not impose a host version gate", () => {
+  assert.equal(manifest.requires, undefined);
 });

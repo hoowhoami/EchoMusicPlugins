@@ -1,12 +1,9 @@
 {
   "id": "playback-control-order",
   "name": "界面与播放控件",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "统一管理侧边栏、首页播放栏和播放器页控制栏的显示、隐藏与排序。",
-  "author": "EchoMusic User",
+  "author": "Codex Luna",
   "icon": "icon.svg",
-  "main": "index.js",
-  "requires": {
-    "echoMusicVersion": ">=2.3.2-beta.4"
-  }
+  "main": "index.js"
 }

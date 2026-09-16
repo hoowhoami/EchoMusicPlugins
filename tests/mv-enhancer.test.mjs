@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const source = await (await import("node:fs/promises")).readFile(
   new URL("../mv-enhancer/index.js", import.meta.url),
   "utf8",
+);
+const manifest = JSON.parse(
+  await readFile(new URL("../mv-enhancer/manifest.json", import.meta.url), "utf8"),
 );
 const api = await import(
   "data:text/javascript;base64," + Buffer.from(source).toString("base64"),
@@ -83,4 +87,8 @@ test("MV enhancer uses H.265 as the fresh default and presents codec order", () 
     "MKV",
     "VP9",
   ]);
+});
+
+test("MV enhancer does not impose a host version gate", () => {
+  assert.equal(manifest.requires, undefined);
 });
