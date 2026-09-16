@@ -312,16 +312,17 @@
     },
     {
       "id": "folia-style",
-      "name": "Folia 歌词 beta",
-      "description": "基于 Folia 的歌词可视化插件。",
+      "name": "Folia 歌词",
+      "description": "基于 Folia 的播放页，拥有多种绚丽的歌词动画效果。",
       "author": "Oneday5799",
       "path": "folia-style",
-      "repo": "https://github.com/oneday5799/EchoMusicPlugins",
-      "homepage": "https://github.com/oneday5799/EchoMusicPlugins/tree/main/folia-style",
+      "repo": "https://github.com/EchoMusic-org/folia-style",
+      "homepage": "https://github.com/EchoMusic-org/folia-style",
       "tags": [
         "player",
         "lyrics",
-        "lyric-effects"
+        "lyric-effects",
+        "folia"
       ]
     },
     {
