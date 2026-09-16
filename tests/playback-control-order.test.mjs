@@ -71,3 +71,18 @@ test("merged settings keep sorting inside the selected page and sidebar group", 
   assert.deepEqual(settings.home.left, ["volume", "favorite", "add", "comments", "mv"]);
   assert.deepEqual(settings.home.hidden, ["volume"]);
 });
+
+test("playlist category visibility is independent from fixed playlist item visibility", () => {
+  const settings = api.normalizeSettings({
+    sidebar: {
+      playlists: { visible: true, hidden: ["defaultFavorite", "likedPlaylist"] },
+    },
+  });
+
+  assert.equal(settings.sidebar.playlists.visible, true);
+  assert.deepEqual(settings.sidebar.playlists.hidden, ["defaultFavorite", "likedPlaylist"]);
+
+  const categoryHidden = api.normalizeSettings({ sidebar: { playlists: { visible: false } } });
+  assert.equal(categoryHidden.sidebar.playlists.visible, false);
+  assert.deepEqual(categoryHidden.sidebar.playlists.hidden, []);
+});

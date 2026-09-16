@@ -42,7 +42,7 @@ export const SIDEBAR_GROUPS = Object.freeze({
   },
   playlists: {
     title: "歌单",
-    description: "管理固定歌单项；用户歌单仍由主程序自己的歌单排序管理。",
+    description: "单独控制歌单类；固定歌单项仍可分别隐藏，用户歌单仍由主程序管理。",
     items: [
       ["defaultFavorite", "默认收藏"],
       ["likedPlaylist", "我喜欢"],
@@ -350,7 +350,7 @@ const captureOriginalChildren = (discovered) =>
   }));
 
 const restorePage = (page) => {
-  page.timer && window.clearTimeout(page.timer);
+  page.timer = null;
   for (const snapshot of page.originalChildren) {
     if (!snapshot.parent?.isConnected) continue;
     for (const child of snapshot.children) if (child?.isConnected) snapshot.parent.append(child);
@@ -432,10 +432,13 @@ const applyPageLayout = (page) => {
 
 const schedulePageApply = (page) => {
   if (!page || page.disposed || page.timer) return;
-  page.timer = window.setTimeout(() => {
+  const token = {};
+  page.timer = token;
+  queueMicrotask(() => {
+    if (page.timer !== token) return;
     page.timer = null;
-    applyPageLayout(page);
-  }, 0);
+    if (!page.disposed) applyPageLayout(page);
+  });
 };
 
 const sidebarLabel = (row) => {
@@ -467,6 +470,10 @@ const sidebarPlaylistRows = (root) =>
   [...root.querySelectorAll(".sidebar-library-item")].filter(
     (row) => row.closest(".sidebar-scroll-inner") || row.closest(".sidebar-rail-cover-list"),
   );
+
+// 折叠侧栏的固定歌单使用封面按钮渲染，不会出现在展开态的 .sidebar-library-item 列表中。
+const sidebarPlaylistRailRows = (root) =>
+  [...root.querySelectorAll(".sidebar-rail-cover-list .sidebar-rail-cover-btn[aria-label]")];
 
 const rememberSidebarParent = (record, parent) => {
   if (!parent || record.snapshots.has(parent)) return;
@@ -520,10 +527,14 @@ const applyPlaylistSidebarGroup = (record) => {
   const root = record.root;
   const settings = state.settings.sidebar.playlists;
   const rows = sidebarPlaylistRows(root);
+  const railRows = sidebarPlaylistRailRows(root);
   const items = new Map();
+  const railItems = new Map();
   for (const [id, label] of SIDEBAR_GROUPS.playlists.items) {
     const row = rows.find((candidate) => sidebarLabel(candidate) === label);
     if (row) items.set(id, row);
+    const railRow = railRows.find((candidate) => candidate.getAttribute("aria-label") === label);
+    if (railRow) railItems.set(id, railRow);
   }
   const knownRows = [...items.values()];
   const first = knownRows[0];
@@ -539,14 +550,23 @@ const applyPlaylistSidebarGroup = (record) => {
     }
   }
   for (const [id, row] of items) {
+    const hidden = !settings.visible || settings.hidden.includes(id);
     row.dataset.echoControlOrderSidebarId = id;
-    row.classList.toggle("echo-control-order-sidebar-hidden", !settings.visible || settings.hidden.includes(id));
-    row.dataset.echoControlOrderSidebarDisabled = String(!settings.visible || settings.hidden.includes(id));
+    row.classList.toggle("echo-control-order-sidebar-hidden", hidden);
+    row.dataset.echoControlOrderSidebarDisabled = String(hidden);
   }
-  const dynamicVisible = rows.some((row) => !knownRows.includes(row));
-  const fixedVisible = [...items].some(([id]) => settings.visible && !settings.hidden.includes(id));
+  for (const [id, row] of railItems) {
+    const hidden = !settings.visible || settings.hidden.includes(id);
+    row.dataset.echoControlOrderSidebarId = id;
+    row.classList.toggle("echo-control-order-sidebar-hidden", hidden);
+    row.dataset.echoControlOrderSidebarDisabled = String(hidden);
+  }
   const header = root.querySelector(".sidebar-playlist-header");
-  header?.classList.toggle("echo-control-order-sidebar-group-hidden", !settings.visible || (!dynamicVisible && !fixedVisible));
+  const playlistList = root.querySelector(".sidebar-scroll-inner");
+  const railGroup = root.querySelector(".sidebar-rail-playlists");
+  header?.classList.toggle("echo-control-order-sidebar-group-hidden", !settings.visible);
+  playlistList?.classList.toggle("echo-control-order-sidebar-group-hidden", !settings.visible);
+  railGroup?.classList.toggle("echo-control-order-sidebar-group-hidden", !settings.visible);
 };
 
 const restoreSidebar = (record) => {
@@ -701,7 +721,9 @@ const SETTINGS_CSS = `
 .echo-control-order-settings .echo-control-order-section-title { color: var(--color-text-main); font-size: 14px; font-weight: 850; }
 .echo-control-order-settings .echo-control-order-sidebar-groups { display: grid; gap: 10px; }
 .echo-control-order-settings .echo-control-order-sidebar-group { display: grid; gap: 7px; padding: 10px; border: 1px solid var(--border-subtle); border-radius: 12px; background: color-mix(in srgb, var(--color-bg-elevated) 58%, transparent); }
+.echo-control-order-settings .echo-control-order-sidebar-group-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .echo-control-order-settings .echo-control-order-sidebar-group-title { color: color-mix(in srgb, var(--color-text-main) 76%, transparent); font-size: 11px; font-weight: 850; }
+.echo-control-order-settings .echo-control-order-sidebar-group-switch { display: flex; align-items: center; gap: 7px; color: color-mix(in srgb, var(--color-text-main) 62%, transparent); font-size: 10px; font-weight: 700; }
 .echo-control-order-settings .echo-control-order-sidebar-list { display: grid; gap: 4px; }
 .echo-control-order-settings .echo-control-order-sidebar-item { display: flex; align-items: center; gap: 11px; width: 100%; min-height: 38px; padding: 7px 10px; border: 1px solid transparent; border-radius: 11px; color: var(--color-text-main); background: color-mix(in srgb, var(--color-bg-elevated) 65%, transparent); cursor: grab; text-align: left; }
 .echo-control-order-settings .echo-control-order-sidebar-item:hover { border-color: var(--control-border); }
@@ -800,6 +822,10 @@ const createSettingsComponent = (ctx) => {
         else hidden.push(id);
         save();
       };
+      const toggleSidebarGroup = (groupId, value) => {
+        draft.sidebar[groupId].visible = Boolean(value);
+        save();
+      };
       const startDrag = (kind, owner, zone, index, event) => {
         dragging = { kind, owner, zone, index };
         event.dataTransfer?.setData("text/plain", "echo-control-order");
@@ -863,7 +889,18 @@ const createSettingsComponent = (ctx) => {
         const meta = SIDEBAR_GROUPS[groupId];
         const group = draft.sidebar[groupId];
         return h("div", { class: "echo-control-order-sidebar-group", key: groupId }, [
-          h("div", { class: "echo-control-order-sidebar-group-title" }, meta.title),
+          h("div", { class: "echo-control-order-sidebar-group-heading" }, [
+            h("div", { class: "echo-control-order-sidebar-group-title" }, meta.title),
+            groupId === "playlists"
+              ? h("label", { class: "echo-control-order-sidebar-group-switch" }, [
+                  h("span", "显示歌单类"),
+                  h(Switch, {
+                    modelValue: group.visible,
+                    "onUpdate:modelValue": (value) => toggleSidebarGroup(groupId, value),
+                  }),
+                ])
+              : null,
+          ]),
           h("div", { class: "echo-control-order-description" }, meta.description),
           h(
             "div",
