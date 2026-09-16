@@ -15,6 +15,44 @@ const asNumber = (value) => {
 
 const asString = (value) => String(value ?? "").trim();
 
+// ctx.dom.observe 是新宿主提供的便利封装；旧宿主缺少时，用文档级观察器保留基础兼容性。
+const observeSelectorFallback = (selector, onMatch) => {
+  if (typeof document === "undefined" || typeof MutationObserver === "undefined") return () => {};
+  const mounted = new Map();
+  const reconcile = () => {
+    const matches = new Set([...document.querySelectorAll(selector)]);
+    for (const [node, dispose] of mounted) {
+      if (matches.has(node)) continue;
+      dispose?.();
+      mounted.delete(node);
+    }
+    for (const node of matches) {
+      if (mounted.has(node)) continue;
+      let dispose = () => {};
+      try {
+        const cleanup = onMatch(node);
+        if (typeof cleanup === "function") dispose = cleanup;
+      } catch {
+        // 旧宿主的 MV 结构可能不完整，忽略该节点而不阻断插件启动。
+      }
+      mounted.set(node, dispose);
+    }
+  };
+  const observer = new MutationObserver(reconcile);
+  observer.observe(document.documentElement || document, { childList: true, subtree: true });
+  reconcile();
+  return () => {
+    observer.disconnect();
+    for (const dispose of mounted.values()) dispose?.();
+    mounted.clear();
+  };
+};
+
+const observeSelectorCompat = (ctx, selector, onMatch) =>
+  typeof ctx?.dom?.observe === "function"
+    ? ctx.dom.observe(selector, onMatch)
+    : observeSelectorFallback(selector, onMatch);
+
 export const normalizeCoverUrl = (value, size = 400) => {
   const rawUrl = asString(value);
   if (!rawUrl) return "";
@@ -571,13 +609,16 @@ const QUALITY_STYLE = `
 let runtimeCtx = null;
 let styleDispose = null;
 let routeDispose = null;
+let observeDispose = null;
 let active = null;
 let generation = 0;
 
 const getCurrentSources = (page) => page.versions[page.currentIndex]?.sources || [];
 
 const persistSettings = (page) => {
-  void runtimeCtx.storage.set(STORAGE_KEY, { ...page.settings });
+  if (typeof runtimeCtx?.storage?.set === "function") {
+    void runtimeCtx.storage.set(STORAGE_KEY, { ...page.settings });
+  }
 };
 
 const addOption = (select, value, label, selected) => {
@@ -784,6 +825,7 @@ const selectHostVersion = async (page, index) => {
 const ensureSources = async (page, version) => {
   if (version.sources.some((source) => source.bitrate || source.width || source.height)) return;
   if (!version.hash) return;
+  if (typeof runtimeCtx?.kugou?.video?.getVideoPrivilege !== "function") return;
   try {
     const payload = await runtimeCtx.kugou.video.getVideoPrivilege(version.hash);
     version.sources = mergeSources([version.sources, mapPrivilegeSources(payload)]);
@@ -822,8 +864,16 @@ const selectVersion = async (page, index) => {
 const loadPage = async (page, token) => {
   const routeKey = readRouteKey(runtimeCtx);
   const tasks = [];
-  if (routeKey.albumAudioId) tasks.push(runtimeCtx.kugou.video.getSongMv(routeKey.albumAudioId));
-  else if (routeKey.videoId) tasks.push(runtimeCtx.kugou.video.getVideoDetail(routeKey.videoId));
+  const videoApi = runtimeCtx?.kugou?.video;
+  if (routeKey.albumAudioId && typeof videoApi?.getSongMv === "function") {
+    tasks.push(videoApi.getSongMv(routeKey.albumAudioId));
+  } else if (routeKey.videoId && typeof videoApi?.getVideoDetail === "function") {
+    tasks.push(videoApi.getVideoDetail(routeKey.videoId));
+  } else {
+    page.error = "当前 EchoMusic 版本未提供酷狗 MV 接口";
+    renderVersions(page);
+    return;
+  }
   const results = await Promise.allSettled(tasks);
   if (!active || active !== page || generation !== token || page.disposed) return;
   const versions = results
@@ -883,8 +933,11 @@ const attach = (wrap) => {
     else wrap.prepend(page.panel);
   }
   renderPanel(page);
-  void runtimeCtx.storage
-    .get(STORAGE_KEY)
+  const savedSettings =
+    typeof runtimeCtx?.storage?.get === "function"
+      ? runtimeCtx.storage.get(STORAGE_KEY)
+      : Promise.resolve(null);
+  void Promise.resolve(savedSettings)
     .then((saved) => {
       if (!active || active !== page || page.disposed) return;
       page.settings = normalizeSettings(saved);
@@ -917,15 +970,23 @@ function detach() {
 
 export async function activate(ctx) {
   runtimeCtx = ctx;
-  styleDispose = ctx.css.inject(QUALITY_STYLE, { id: "echo-mv-enhancer" });
-  routeDispose = ctx.router.afterEach(() => {
-    if (!routeIsMv(ctx)) detach();
-  });
-  ctx.dom.observe(".mv-detail-wrap", attach);
+  styleDispose =
+    typeof ctx?.css?.inject === "function"
+      ? ctx.css.inject(QUALITY_STYLE, { id: "echo-mv-enhancer" })
+      : null;
+  routeDispose =
+    typeof ctx?.router?.afterEach === "function"
+      ? ctx.router.afterEach(() => {
+          if (!routeIsMv(ctx)) detach();
+        })
+      : null;
+  observeDispose = observeSelectorCompat(ctx, ".mv-detail-wrap", attach);
 }
 
 export function deactivate() {
   detach();
+  observeDispose?.();
+  observeDispose = null;
   routeDispose?.();
   routeDispose = null;
   styleDispose?.();

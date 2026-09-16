@@ -1,15 +1,12 @@
 {
   "id": "mv-enhancer",
   "name": "MV 功能优化",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "在 MV 页面列出全部视频版本，并将码率、分辨率集中到默认画质选择。",
   "author": "EchoMusic User",
   "icon": "icon.svg",
   "main": "index.js",
   "capabilities": {
     "kugouApi": true
-  },
-  "requires": {
-    "echoMusicVersion": ">=2.3.2-beta.4"
   }
 }

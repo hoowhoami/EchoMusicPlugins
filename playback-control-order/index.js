@@ -138,6 +138,44 @@ const asRecord = (value) =>
 const asBoolean = (value, fallback) => (typeof value === "boolean" ? value : fallback);
 const unique = (values) => [...new Set(values)];
 
+// ctx.dom.observe 是新宿主提供的便利封装；旧宿主缺少时，用文档级观察器保留基础兼容性。
+const observeSelectorFallback = (selector, onMatch) => {
+  if (typeof document === "undefined" || typeof MutationObserver === "undefined") return () => {};
+  const mounted = new Map();
+  const reconcile = () => {
+    const matches = new Set([...document.querySelectorAll(selector)]);
+    for (const [node, dispose] of mounted) {
+      if (matches.has(node)) continue;
+      dispose?.();
+      mounted.delete(node);
+    }
+    for (const node of matches) {
+      if (mounted.has(node)) continue;
+      let dispose = () => {};
+      try {
+        const cleanup = onMatch(node);
+        if (typeof cleanup === "function") dispose = cleanup;
+      } catch {
+        // 旧宿主的页面结构可能不完整，忽略该节点而不阻断插件启动。
+      }
+      mounted.set(node, dispose);
+    }
+  };
+  const observer = new MutationObserver(reconcile);
+  observer.observe(document.documentElement || document, { childList: true, subtree: true });
+  reconcile();
+  return () => {
+    observer.disconnect();
+    for (const dispose of mounted.values()) dispose?.();
+    mounted.clear();
+  };
+};
+
+const observeSelectorCompat = (ctx, selector, onMatch) =>
+  typeof ctx?.dom?.observe === "function"
+    ? ctx.dom.observe(selector, onMatch)
+    : observeSelectorFallback(selector, onMatch);
+
 export const normalizeLayout = (layout, fallback, availableIds) => {
   const source = asRecord(layout);
   const available = new Set(availableIds);
@@ -616,7 +654,9 @@ const applyAllLayouts = () => {
 const updateStoredSettings = (next) => {
   const normalized = normalizeSettings(next);
   state.settings = normalized;
-  void runtimeCtx.storage.set(STORAGE_KEY, normalized);
+  if (typeof runtimeCtx?.storage?.set === "function") {
+    void runtimeCtx.storage.set(STORAGE_KEY, normalized);
+  }
   applyAllLayouts();
 };
 
@@ -787,6 +827,7 @@ let styleDispose = null;
 let settingsDispose = null;
 let routeDispose = null;
 let sidebarObserveDispose = null;
+let pageObserveDisposes = [];
 const pages = new Set();
 const sidebarRecords = new Set();
 
@@ -1020,17 +1061,33 @@ const createSettingsComponent = (ctx) => {
 
 export async function activate(ctx) {
   runtimeCtx = ctx;
-  state = ctx.vue.reactive({ settings: normalizeSettings(await ctx.storage.get(STORAGE_KEY)) });
-  styleDispose = ctx.css.inject(SETTINGS_CSS, { id: "playback-control-order" });
-  settingsDispose = ctx.ui.settings.define({
-    title: "界面与播放控件",
-    description: "统一隐藏、显示和排序侧边栏及两个播放界面的控件。",
-    component: createSettingsComponent(ctx),
-  });
-  routeDispose = ctx.router.afterEach(() => applyAllLayouts());
-  ctx.dom.observe(".player-bar", (root) => observePage("home", root));
-  ctx.dom.observe(".lyric-bar", (root) => observePage("player", root));
-  sidebarObserveDispose = ctx.dom.observe(".sidebar", observeSidebar);
+  const savedSettings =
+    typeof ctx?.storage?.get === "function" ? await ctx.storage.get(STORAGE_KEY) : null;
+  const reactive = typeof ctx?.vue?.reactive === "function" ? ctx.vue.reactive : (value) => value;
+  state = reactive({ settings: normalizeSettings(savedSettings) });
+  styleDispose =
+    typeof ctx?.css?.inject === "function"
+      ? ctx.css.inject(SETTINGS_CSS, { id: "playback-control-order" })
+      : null;
+  if (
+    typeof ctx?.ui?.settings?.define === "function" &&
+    typeof ctx?.vue?.defineComponent === "function" &&
+    typeof ctx?.vue?.defineAsyncComponent === "function" &&
+    ctx?.ui?.components?.Switch
+  ) {
+    settingsDispose = ctx.ui.settings.define({
+      title: "界面与播放控件",
+      description: "统一隐藏、显示和排序侧边栏及两个播放界面的控件。",
+      component: createSettingsComponent(ctx),
+    });
+  }
+  routeDispose =
+    typeof ctx?.router?.afterEach === "function" ? ctx.router.afterEach(() => applyAllLayouts()) : null;
+  pageObserveDisposes = [
+    observeSelectorCompat(ctx, ".player-bar", (root) => observePage("home", root)),
+    observeSelectorCompat(ctx, ".lyric-bar", (root) => observePage("player", root)),
+  ];
+  sidebarObserveDispose = observeSelectorCompat(ctx, ".sidebar", observeSidebar);
   applyAllLayouts();
 }
 
@@ -1047,6 +1104,8 @@ export function deactivate() {
     restoreSidebar(record);
   }
   sidebarRecords.clear();
+  for (const dispose of pageObserveDisposes) dispose?.();
+  pageObserveDisposes = [];
   sidebarObserveDispose?.();
   routeDispose?.();
   settingsDispose?.();
