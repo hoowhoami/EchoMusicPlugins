@@ -186,6 +186,22 @@ ctx.nowPlaying.command("lyricOffsetForward");
 ctx.nowPlaying.command("lyricOffsetReset");
 ```
 
+字符串命令只能表达"开关"或"按固定步长前进/后退"这类无参语义（如 `seekForward` / `volumeUp` 在主窗口按设置项里的步长执行）。需要精确跳转或设置绝对音量时，使用对象命令：
+
+```js
+// 跳到指定秒数（会被 clamp 到 [0, duration]）
+ctx.nowPlaying.command({ type: "seek", value: 42 });
+
+// 设置绝对音量（0-100，会被 clamp 到 [0, 100]）
+ctx.nowPlaying.command({ type: "setVolume", value: 35 });
+
+// 相对调整音量（正值加、负值减，最终结果 clamp 到 [0, 100]）
+ctx.nowPlaying.command({ type: "adjustVolume", value: -10 });
+```
+
+对象命令经过主进程转发到主窗口 `playerStore`，与字符串命令走同一通道，状态同步逻辑一致；可安全用于插件浮窗与桌面歌词等需要精确控制播放位置或音量的场景。
+
+
 ## 窗口控制
 
 窗口入口中的 `ctx.window` 只控制当前插件窗口：
@@ -264,8 +280,49 @@ async function togglePin(ctx, settings) {
 - `getBounds(windowId)`
 - `setIgnoreMouseEvents(windowId, ignore)`
 - `showOnTop(windowId, options?)`
+- `player`：浮窗播放控制入口，作用于全局主播放器。详见下文。
 
-窗口入口中的 `ctx.webServer` 与主插件入口一致，可用 `listen(handler, options?)` 创建仅监听 `127.0.0.1` 的本地 HTTP 服务。需要在 manifest 中声明 `capabilities.webServer: true`；服务会在插件窗口销毁、插件禁用/卸载或应用退出时自动关闭。
+### `ctx.windows.player` 浮窗播放控制
+
+`ctx.windows.player` 是面向"主插件入口管理多窗口时顺手控制播放"的轻量入口，**不带 windowId**（目标是全局唯一的主播放器），**不走 Pinia store**——所有方法直接转发到主进程 player IPC 或 `now-playing:command` 通道。与顶层 `ctx.player`（响应式 store 模式，含 `currentTime / volume / isPlaying` 等 computed 状态）互补：需要响应式状态订阅用 `ctx.player`，只需要一次性控制动作用 `ctx.windows.player`。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `play()` | `player:play` IPC | 强制开始播放（不切换暂停状态） |
+| `pause()` | `player:pause` IPC | 强制暂停 |
+| `stop()` | `player:stop` IPC | 停止播放并释放当前源 |
+| `seek(time)` | `player:seek` IPC | 跳到指定秒数（秒，非毫秒） |
+| `setVolume(volume)` | `player:set-volume` IPC | 设置绝对音量，0-100 |
+| `adjustVolume(delta)` | `getState → +delta → clamp[0,100] → setVolume` | 相对调整音量；先读当前 volume，再加 delta 并裁剪到 `[0, 100]` 写回 |
+| `setSpeed(speed)` | `player:set-speed` IPC | 设置播放速率（如 1.0、1.5、0.75） |
+| `toggleMute()` | `now-playing:command('toggleMute')` | 切换静音，复用主窗口 `lastNonZeroVolume` 恢复逻辑 |
+| `togglePlayMode()` | `now-playing:command('togglePlayMode')` | 循环切换播放模式：顺序 → 列表 → 随机 → 单曲循环 → 顺序 |
+| `getState()` | `player:get-state` IPC | 返回 `{ playing, paused, duration, timePos, volume, speed, idle, path, audioDevice } \| null` |
+
+```js
+// 跳到副歌段
+await ctx.windows.player.seek(95);
+
+// 音量下调 10
+await ctx.windows.player.adjustVolume(-10);
+
+// 一键静音 / 恢复
+await ctx.windows.player.toggleMute();
+
+// 读取当前播放状态（注意可能为 null，例如播放器尚未初始化）
+const state = await ctx.windows.player.getState();
+if (state) {
+  console.log(state.timePos, '/', state.duration, 'volume:', state.volume);
+}
+```
+
+`adjustVolume` 是组合操作：先 `getState()` 读 `volume`，加 `delta` 并 clamp 到 `[0, 100]` 再 `setVolume` 写回。这意味着频繁调用可能因竞态看到旧值；如需精确控制，应直接使用 `setVolume(absoluteValue)`。
+
+`toggleMute` 与 `togglePlayMode` 走 `now-playing:command` 通道而非 player IPC：mute 的 `lastNonZeroVolume` 恢复逻辑、playMode 的循环切换逻辑都在主窗口 `playerStore` 内，复用它们能避免重复实现且保证 UI 状态一致。
+
+窗口入口（`EchoPluginWindowContext`）**没有** `ctx.windows.player`——窗口入口里只能通过 `ctx.nowPlaying.command(...)` 控制播放（包括上面新增的对象命令）。
+
+窗口入口中的 `ctx.webServer` 与主插件入口一致，可用 `listen(handler, options?)` 创建仅监听 `127.0.0.1` 的本地 HTTP 服务。需要声明 `capabilities.webServer: true`；服务会在插件窗口销毁、插件禁用/卸载或应用退出时自动关闭。
 
 窗口入口中的 `ctx.sqlite` 与主插件入口一致，可用 `open(options?)` 打开当前插件的私有 SQLite 数据库，并使用 `db.exec/run/get/all/transaction/close` 操作数据。使用前仍需在 manifest 中声明 `capabilities.sqlite: true`；数据库按插件 id 隔离，窗口销毁、插件禁用/卸载或安全模式开启时会由宿主关闭连接。
 

@@ -1,15 +1,15 @@
 {
   "id": "water-lyrics",
-  "name": "水波歌词动效",
-  "version": "1.0.0",
-  "description": "为页面歌词添加水面波纹、斜体错位排版和轻柔连线动效。",
+  "name": "沉浸水波歌词",
+  "version": "2.0.0",
+  "description": "一个带水面光斑粒子背景的竖排歌词页皮肤，歌词居中排列并用斜线分隔。",
   "author": "EchoMusic",
   "icon": "icon.svg",
   "main": "index.js",
   "capabilities": {
-    "lyricEffects": true
+    "lyricsPage": true
   },
   "requires": {
-    "echoMusicVersion": ">=2.2.6-beta.20"
+    "echoMusicVersion": ">=2.2.9-beta.6"
   }
 }

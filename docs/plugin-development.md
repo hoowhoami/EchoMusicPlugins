@@ -106,7 +106,8 @@ EchoMusic 支持在线插件源和本地插件。用户可以在"插件管理"�
 - [任务中心 API](tasks.md)：注册后台任务或待操作任务、展示明细与操作按钮、更新进度、处理中止信号，并定义完成、失败和中止后的保留策略。
 - [独立浮窗与 Now Playing](floating-windows.md)：声明独立桌面浮窗、订阅当前播放/歌词快照、发送播放与歌词命令，并接入统一拖动与缩放交互。
 - [备份与恢复 API](backups.md)：创建、检查和恢复备份，以及将 WebDAV 等存储提供方接入主程序设置页。
-- `water-lyrics`：页面歌词动效示例，演示 `ctx.lyricEffects.register()` 的 style/decorator 接入方式。
+- [服务请求拦截 API](server-interceptor.md)：通过 `ctx.server.intercept()` 拦截主程序发往 server 的 API 请求，支持观察、修改、Mock、转发与多插件优先级协作。
+- `water-lyrics`：歌词页皮肤示例，演示 `ctx.ui.lyricsPage.register()` 的完整皮肤组件接入方式，包含 Canvas 粒子背景和皮肤设置面板。
 - `apple-music-lyrics`：页面歌词 AMLL 渲染示例，演示通过 decorator 扩展点接入 `@applemusic-like-lyrics/core`。
 
 ## 许可证
@@ -175,7 +176,8 @@ pnpm exec electron . --safe-mode
     "process": false,
     "sqlite": false,
     "unrestrictedNetwork": false,
-    "webServer": false
+    "webServer": false,
+    "serverIntercept": false
   },
   "requires": {
     "echoMusicVersion": ">=2.2.6-beta.9"
@@ -206,6 +208,8 @@ pnpm exec electron . --safe-mode
 
 `capabilities.lyrics` 可选。插件如需通过 `ctx.lyrics.registerResolver()` 为特定歌曲提供歌词内容，必须显式设为 `true`。适合 WebDAV 旁挂 `.lrc`、本地媒体库内嵌歌词或私有歌词服务。
 
+`capabilities.lyricsPage` 可选。插件如需通过 `ctx.ui.lyricsPage.register()` 注册自定义歌词页皮肤（替换整个歌词页内容区域的渲染），必须显式设为 `true`。适合实现沉浸式封面歌词、写真轮播歌词、竖排/KTV 字幕等完整歌词页布局。与 `lyricEffects` 不同，`lyricsPage` 提供完整页面组件而非叠加装饰层。
+
 `capabilities.process` 可选。插件如需通过 `ctx.process.launch()` 启动插件目录内的本地辅助程序，必须显式设为 `true`。未声明时主程序会拒绝启动进程。该能力只表示插件可以请求启动自己目录内的可执行文件，不表示启动后的程序运行在沙箱内。
 
 `capabilities.sqlite` 可选。插件如需通过 `ctx.sqlite` 使用 SQLite 私有数据库，必须显式设为 `true`。数据库由宿主创建在 EchoMusic 用户数据目录下，并按插件 id 隔离；插件只能访问自己的命名数据库，不能传入任意本地路径。
@@ -215,6 +219,8 @@ pnpm exec electron . --safe-mode
 `capabilities.unrestrictedNetwork` 可选。插件如需通过 `ctx.net.request()` 使用主进程 Axios 的 Node.js HTTP adapter，或自定义浏览器 Fetch 不允许设置的 `User-Agent`、`Referer`、`Cookie`、`Origin`、`Host` 等请求头，必须显式设为 `true`。该能力不受浏览器 CORS 和禁止头规则约束，也允许访问本机及内网地址；只应在确实需要精确控制请求的插件中声明。普通 Web 请求继续使用 `ctx.net.fetch()`。
 
 `capabilities.webServer` 可选。插件如需通过 `ctx.webServer.listen()` 创建可被其他本机软件访问的 HTTP 页面或接口，必须显式设为 `true`。服务默认只监听 `127.0.0.1`，适合 Wallpaper Engine、OBS、本地脚本或其他桌面软件读取 EchoMusic 当前状态、歌词页面、可视化页面等场景。插件禁用、卸载、安全模式、运行上下文销毁或应用退出时，宿主会自动释放端口。
+
+`capabilities.serverIntercept` 可选。插件如需通过 `ctx.server.intercept()` 以洋葱中间件方式介入主程序发往酷狗 server 的 API 请求，必须显式设为 `true`。支持按 `match` 过滤、按 `priority` 排序，可读改请求参数/请求体/请求头、不调用 `next()` 短路 Mock、或加工/覆盖响应；修改发生在签名之前，宿主自动重算签名。该能力可读取 Authorization 中的登录凭证和全部听歌数据，敏感度与 `unrestrictedNetwork` 同级；拦截器异常一律 fail-open 放行。完整语义、优先级约定与示例见 [服务请求拦截 API](server-interceptor.md)。
 
 `requires.echoMusicVersion` 可选，表示插件要求的 EchoMusic 主程序版本范围，使用 semver range。常见写法是 `>=2.2.6`；如果插件明确不支持下一个大版本，也可以写 `>=2.2.6 <3`。如果只写 `2.2.6`，EchoMusic 会按 `>=2.2.6` 处理。版本范围写错会被标记为 manifest 无效；范围有效但当前主程序不满足时，插件管理页会提示“版本不兼容”并阻止启用。
 
@@ -372,6 +378,7 @@ export default {
 | `ctx.toast`                                                           | 应用内提示：`info()`、`success()`、`warning()`、`danger()`                                                                                                                                                                                                                                                                                                                                                    |
 | `ctx.net.fetch`                                                       | 浏览器 Fetch 网络请求，返回标准 `Response`，遵循 Chromium 的 CORS、Cookie、缓存和禁止请求头规则                                                                                                                                                                                                                                                                                                               |
 | `ctx.net.request(options)`                                            | 主进程 Axios Node 请求，支持覆盖 `User-Agent`、`Referer`、`Cookie`、`Origin`、`Host` 等请求头，并按 `responseType` 返回 `response.data`；要求 manifest 声明 `capabilities.unrestrictedNetwork: true`                                                                                                                                                                                                                |
+| `ctx.server.intercept(handler, options?)`                             | 注册 server API 请求拦截器（洋葱中间件），可读改请求与响应、`next()` 透传或补丁改请求、不调 `next()` 短路 Mock；支持 `priority`、`match`、`name`，要求 manifest 声明 `capabilities.serverIntercept: true`，详见 [服务请求拦截 API](server-interceptor.md)                                                                                                                                                         |
 | `ctx.electron`                                                        | 当前 preload 暴露的 Electron API                                                                                                                                                                                                                                                                                                                                                                              |
 | `ctx.electron.platform`                                               | 当前平台：`'darwin'` / `'win32'` / `'linux'`                                                                                                                                                                                                                                                                                                                                                                  |
 | `ctx.css.inject(cssText, options?)`                                   | 注入全局 CSS，禁用插件时自动清理                                                                                                                                                                                                                                                                                                                                                                              |
@@ -1277,6 +1284,16 @@ export async function activate(ctx) {
   }
 }
 ```
+
+`seekForward` / `seekBackward` 是字符串命令，偏移量由主窗口设置项控制，不能携带参数。若需要跳到指定秒数或精确设置音量（典型场景：插件浮窗内的进度条拖动、音量滑块），使用对象命令——主进程会校验后转发到主窗口 `playerStore`：
+
+```js
+ctx.nowPlaying.command({ type: "seek", value: 95 });       // 跳到第 95 秒
+ctx.nowPlaying.command({ type: "setVolume", value: 35 });   // 音量设为 35
+ctx.nowPlaying.command({ type: "adjustVolume", value: -10 }); // 音量相对减 10
+```
+
+主插件入口有 `ctx.player.seek(time)` / `ctx.player.setVolume(volume)` 可直接调；对象命令主要用于浮窗入口（`EchoPluginWindowContext`）等没有 `ctx.player` 的场景。完整方法表与设计差异见[浮窗文档](floating-windows.md#ctxwindowsplayer-浮窗播放控制)。
 
 #### 方式 3：百分比跳转
 
@@ -2338,6 +2355,125 @@ export function activate(ctx) {
 - 如果接管自动滚动，只处理播放自动跟随场景；用户滚轮浏览时应交还宿主默认滚动。
 - `mount()` 中创建的 DOM、RAF、事件监听和订阅都要返回清理函数；宿主会在插件停用和歌词页卸载时调用。
 - 如果动效需要用户配置，使用 `ctx.storage` 保存普通对象，并通过插件设置面板调整 CSS 变量或内部状态。
+
+## 歌词页皮肤
+
+插件可以用 `ctx.ui.lyricsPage.register(...)` 注册一个完整的歌词页皮肤，替换歌词页内容区域的渲染。与 `ctx.lyricEffects`（叠加装饰层）不同，歌词页皮肤提供的是一个 Vue 组件，宿主会把它作为歌词页的主体内容渲染，标题栏和底部播放控制仍由宿主负责。
+
+使用前在 manifest 中声明：
+
+```json
+{
+  "capabilities": {
+    "lyricsPage": true
+  }
+}
+```
+
+### 注册皮肤
+
+```js
+export function activate(ctx) {
+  ctx.ui.lyricsPage.register({
+    id: "my-skin",
+    title: "我的歌词皮肤",
+    preview: "https://example.com/preview.png", // 可选，换肤面板预览图
+    component: createSkinComponent(ctx),
+    titlebar: "host", // "host" 显示宿主标题栏，"none" 完全自定义
+    settings: {
+      defaults: { fontSize: 28 },
+      validate: (values) => true,
+      component: createSettingsComponent(ctx),
+    },
+  });
+}
+```
+
+`register` 字段：
+
+| 字段        | 说明                                                                 |
+| ----------- | -------------------------------------------------------------------- |
+| `id`        | 皮肤 id，同一插件内唯一。                                            |
+| `title`     | 皮肤名称，显示在换肤面板。                                           |
+| `preview`   | 可选，换肤面板预览图 URL（建议 16:9，如 320×180）。缺省时宿主显示渐变背景 + 音符图标的占位卡片。**强烈建议提供**：一张真实截图能让用户一眼识别皮肤效果，远胜抽象占位。 |
+| `component` | Vue 组件，作为歌词页主体内容渲染。                                   |
+| `titlebar`  | `"host"` 保留宿主标题栏（默认），`"none"` 由皮肤自行处理关闭按钮。   |
+| `tools`     | `"host"` 保留宿主右侧歌词工具按钮（来源/翻译/音译/复制/偏移，默认），`"none"` 由皮肤自行提供。 |
+| `settings`  | 可选，皮肤配置描述，见下文。                                         |
+
+`register()` 返回卸载函数，插件停用时宿主也会自动清理。
+
+### 皮肤组件
+
+皮肤组件接收一个 `page` prop，即歌词页上下文。在组件 `setup()` 中可以调用 `ctx.ui.lyricsPage.useSkin()` 获取皮肤配置句柄。
+
+```js
+const createSkinComponent = (ctx) =>
+  ctx.vue.defineComponent({
+    name: "MyLyricSkin",
+    props: { page: { type: Object, required: true } },
+    setup(props) {
+      const skin = ctx.ui.lyricsPage.useSkin();
+      return () =>
+        ctx.vue.h("div", { class: "my-lyric-skin" }, [
+          // props.page.state.lyrics.lines — 歌词行数组
+          // props.page.state.lyrics.currentIndex — 当前行索引
+          // skin.settings.value — 皮肤配置
+        ]);
+    },
+  });
+```
+
+`page` 上下文提供：
+
+| 字段/方法              | 说明                                                                 |
+| ---------------------- | -------------------------------------------------------------------- |
+| `page.state`           | 只读状态：`track`、`isPlaying`、`currentTime`、`duration`、`playbackClock`、`volume`、`playMode` 等播放状态；`lyrics.lines`、`lyrics.currentIndex`、`lyrics.timeOffset` 等歌词状态。 |
+| `page.close()`         | 关闭歌词页。                                                         |
+| `page.panels.open(panel)` | 打开面板：`queue`、`lyrics-picker`、`quality-picker`、`audio-effects`、`comments`、`add-to-playlist`、`settings`。 |
+| `page.panels.close()`  | 关闭当前面板。                                                       |
+| `page.playback.*`      | 播放控制：`toggle`、`next`、`prev`、`seek(seconds)`、`setVolume`、`toggleMute`、`setPlaybackRate`、`cycleMode`、`setMode`。 |
+| `page.favorite.toggle()` | 切换收藏。                                                           |
+| `page.queue.*`         | 队列操作：`play(id)`、`remove(id)`。                                 |
+| `page.audio.*`         | 音质音效：`setQuality`、`setEffect`、`useCloudSource`。              |
+| `page.lyrics.*`        | 歌词操作：`getTimelineMs()`、`setTranslation`、`setRomanization`、`adjustOffset(ms)`、`resetOffset`、`copy`。 |
+| `page.barrage`         | 弹幕控制：`enabled`（读写布尔值，开关弹幕）、`send(content)`（发送一条弹幕）。弹幕显示层由宿主持久化，插件只需提供控制入口。 |
+
+> **弹幕说明**：弹幕飞行层（`BarrageLayer`）由宿主对所有皮肤统一渲染，插件无需关心弹幕的加载与飞行。如需在皮肤中提供弹幕开关与发送入口，可通过 `ctx.ui.components.BarrageControls` 复用宿主的弹幕控制组件，并将其 `v-model:enabled` 绑定到 `page.barrage.enabled`、`@sent` 转发到 `page.barrage.send(content)`。详见下方"宿主组件"章节。
+
+### 皮肤配置
+
+`settings.defaults` 是配置默认值，`settings.validate(values)` 在校验 patch 后的整体配置时调用，返回 `true` 或 `{ errors?: string[] }`。`settings.component` 是渲染在宿主皮肤设置面板中的 Vue 组件。
+
+在皮肤组件和设置组件中，都通过 `ctx.ui.lyricsPage.useSkin()` 获取配置句柄：
+
+```js
+const skin = ctx.ui.lyricsPage.useSkin();
+// skin.settings.value — 当前配置（ComputedRef）
+// skin.patch({ fontSize: 32 }) — 局部更新配置，经过 validate 后持久化
+// skin.reset() — 重置为 defaults
+```
+
+配置按皮肤 key 隔离存储在宿主设置中，插件无需自行读写 `ctx.storage`。
+
+### 与歌词动效的区别
+
+| 维度              | `lyricEffects`                          | `lyricsPage`                          |
+| ----------------- | --------------------------------------- | ------------------------------------- |
+| 渲染方式          | 叠加在宿主歌词之上的样式/装饰层         | 替换整个歌词页内容区域的完整组件      |
+| 宿主歌词 DOM      | 复用，通过 `data-echo-lyric-*` 标记操作 | 不使用，插件自行渲染歌词              |
+| 滚动/逐字高亮     | 宿主负责                                | 插件自行实现                          |
+| 适合场景          | 微调样式、添加装饰、当前行辉光          | 完全自定义布局、沉浸式封面/写真歌词   |
+
+最佳实践：
+
+- 皮肤组件应在 `onUnmounted` 中清理 RAF、定时器、事件监听和 canvas。
+- 尊重系统"减少动态效果"偏好（可通过 `page.state` 或 `matchMedia` 判断）。
+- 皮肤内容完全由插件控制，宿主不会强制渲染底部播放控制栏。如需播放控制，可通过 `ctx.ui.components.LyricPlayerControls` 复用宿主的底部控制栏组件，并将其事件（`openQueue`、`openComment`、`openAddToPlaylist`、`openSkins`）转发到 `page.panels.open(...)` 或 `ctx.ui.lyricsPage.openSkins()`；也可以完全自定义控制 UI，通过 `page.playback.*` 等上下文方法实现播放控制。
+- 换肤按钮已内置在 `LyricPlayerControls` 右侧第一个位置。如果完全自定义控制栏，可调用 `ctx.ui.lyricsPage.openSkins()` 打开宿主换肤面板。
+- 默认情况下宿主会为自定义皮肤渲染右侧歌词工具按钮（来源/翻译/音译/复制/偏移），与内置皮肤体验一致。如需完全自定义，可在 `register` 时将 `tools` 设为 `"none"`。
+- 弹幕飞行层由宿主统一渲染。如需弹幕开关与发送入口，可使用 `ctx.ui.components.BarrageControls`（`variant="lyric"`），`v-model:enabled` 绑定 `page.barrage.enabled`，`@sent` 转发到 `page.barrage.send(content)`，`resource` 取 `page.state.track`。
+- 皮肤配置变化时，`skin.settings` 会响应式更新，组件无需手动订阅。
 
 ## 完整 UI 接入示例
 

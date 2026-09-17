@@ -1,22 +1,56 @@
-const STORAGE_KEY = "water-lyrics-settings";
-
 const DEFAULT_SETTINGS = {
-  enabled: true,
-  intensity: 62,
-  stagger: 44,
-  glow: 42,
-  italic: true,
-  typography: true,
-  connectors: true,
+  particleCount: 60,
+  particleSpeed: 40,
+  glowIntensity: 70,
+  lineSpacing: 72,
+  connectorOpacity: 50,
+  fontSize: 30,
 };
 
-let state = null;
-let effectDispose = null;
-let settingsDispose = null;
-let settingsStyleDispose = null;
-let saveTimer = 0;
-
-const mountedHosts = new Set();
+/** 生成水波歌词皮肤的 SVG 预览图（16:9），体现水底光斑 + 竖排歌词 + 斜线分隔。 */
+const createWaterPreviewSvg = () => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" width="320" height="180">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a1f2e"/>
+      <stop offset="1" stop-color="#06121a"/>
+    </linearGradient>
+    <radialGradient id="glow1" cx="30%" cy="35%" r="40%">
+      <stop offset="0" stop-color="#3dd6c8" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#3dd6c8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow2" cx="72%" cy="60%" r="35%">
+      <stop offset="0" stop-color="#4ea8de" stop-opacity="0.4"/>
+      <stop offset="1" stop-color="#4ea8de" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="320" height="180" fill="url(#bg)"/>
+  <rect width="320" height="180" fill="url(#glow1)"/>
+  <rect width="320" height="180" fill="url(#glow2)"/>
+  <g fill="#7fe9dd" opacity="0.8">
+    <circle cx="60" cy="40" r="2"/>
+    <circle cx="120" cy="70" r="1.5"/>
+    <circle cx="200" cy="35" r="2.5"/>
+    <circle cx="260" cy="90" r="1.8"/>
+    <circle cx="90" cy="120" r="1.5"/>
+    <circle cx="170" cy="140" r="2"/>
+    <circle cx="240" cy="150" r="1.5"/>
+  </g>
+  <g stroke="#5ac8fa" stroke-width="1" opacity="0.25">
+    <line x1="140" y1="40" x2="180" y2="40" transform="rotate(14 160 40)"/>
+    <line x1="140" y1="75" x2="180" y2="75" transform="rotate(14 160 75)"/>
+    <line x1="140" y1="110" x2="180" y2="110" transform="rotate(14 160 110)"/>
+    <line x1="140" y1="145" x2="180" y2="145" transform="rotate(14 160 145)"/>
+  </g>
+  <g font-family="system-ui,sans-serif" text-anchor="middle" fill="#e6fffb">
+    <text x="160" y="44" font-size="13" font-weight="700" opacity="0.95">灯初上</text>
+    <text x="160" y="79" font-size="11" opacity="0.55">夜未央</text>
+    <text x="160" y="114" font-size="11" opacity="0.4">心事逐浪</text>
+    <text x="160" y="149" font-size="11" opacity="0.3">向远方</text>
+  </g>
+</svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+};
 
 const clamp = (value, min, max) =>
   Math.max(min, Math.min(max, Number(value) || 0));
@@ -26,510 +60,473 @@ const normalizeSettings = (value) => {
   return {
     ...DEFAULT_SETTINGS,
     ...source,
-    enabled: source.enabled ?? DEFAULT_SETTINGS.enabled,
-    intensity: clamp(source.intensity ?? DEFAULT_SETTINGS.intensity, 0, 100),
-    stagger: clamp(source.stagger ?? DEFAULT_SETTINGS.stagger, 0, 80),
-    glow: clamp(source.glow ?? DEFAULT_SETTINGS.glow, 0, 100),
-    italic: source.italic ?? DEFAULT_SETTINGS.italic,
-    typography: source.typography ?? DEFAULT_SETTINGS.typography,
-    connectors: source.connectors ?? DEFAULT_SETTINGS.connectors,
+    particleCount: clamp(
+      source.particleCount ?? DEFAULT_SETTINGS.particleCount,
+      0,
+      200,
+    ),
+    particleSpeed: clamp(
+      source.particleSpeed ?? DEFAULT_SETTINGS.particleSpeed,
+      0,
+      200,
+    ),
+    glowIntensity: clamp(
+      source.glowIntensity ?? DEFAULT_SETTINGS.glowIntensity,
+      0,
+      100,
+    ),
+    lineSpacing: clamp(
+      source.lineSpacing ?? DEFAULT_SETTINGS.lineSpacing,
+      40,
+      140,
+    ),
+    connectorOpacity: clamp(
+      source.connectorOpacity ?? DEFAULT_SETTINGS.connectorOpacity,
+      0,
+      100,
+    ),
+    fontSize: clamp(source.fontSize ?? DEFAULT_SETTINGS.fontSize, 16, 56),
   };
 };
 
-const scheduleSave = (ctx) => {
-  if (saveTimer) window.clearTimeout(saveTimer);
-  saveTimer = window.setTimeout(() => {
-    saveTimer = 0;
-    if (!state) return;
-    void ctx.storage.set(STORAGE_KEY, normalizeSettings(state.settings));
-  }, 240);
+/**
+ * 创建水面光斑粒子背景 canvas。
+ * 粒子缓慢上浮并左右漂移，带有柔和辉光，模拟水下阳光折射的光斑效果。
+ */
+const createParticleBackground = (ctx, settingsRef) => {
+  const { onMounted, onUnmounted, ref, watch } = ctx.vue;
+  const canvasRef = ref(null);
+  let animationFrame = 0;
+  let particles = [];
+  let width = 0;
+  let height = 0;
+
+  const createParticle = () => ({
+    x: Math.random() * width,
+    y: Math.random() * height,
+    radius: 1.5 + Math.random() * 4,
+    speedY: 0.15 + Math.random() * 0.5,
+    speedX: (Math.random() - 0.5) * 0.3,
+    opacity: 0.15 + Math.random() * 0.5,
+    phase: Math.random() * Math.PI * 2,
+  });
+
+  const initParticles = () => {
+    const count = settingsRef.value.particleCount;
+    particles = Array.from({ length: count }, createParticle);
+  };
+
+  const resize = () => {
+    const canvas = canvasRef.value;
+    if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    width = rect.width;
+    height = rect.height;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    const gl = canvas.getContext("2d");
+    gl.setTransform(dpr, 0, 0, dpr, 0, 0);
+    initParticles();
+  };
+
+  const animate = () => {
+    const canvas = canvasRef.value;
+    if (!canvas) return;
+    const gl = canvas.getContext("2d");
+    const s = settingsRef.value;
+    const speed = s.particleSpeed / 100;
+    const glow = s.glowIntensity / 100;
+
+    gl.clearRect(0, 0, width, height);
+
+    const bg = gl.createLinearGradient(0, 0, 0, height);
+    bg.addColorStop(0, "rgba(8, 28, 26, 0.55)");
+    bg.addColorStop(0.5, "rgba(6, 22, 20, 0.45)");
+    bg.addColorStop(1, "rgba(4, 16, 14, 0.55)");
+    gl.fillStyle = bg;
+    gl.fillRect(0, 0, width, height);
+
+    for (const p of particles) {
+      p.phase += 0.01;
+      p.y -= p.speedY * speed;
+      p.x += p.speedX * speed + Math.sin(p.phase) * 0.2;
+
+      if (p.y < -10) {
+        p.y = height + 10;
+        p.x = Math.random() * width;
+      }
+      if (p.x < -10) p.x = width + 10;
+      if (p.x > width + 10) p.x = -10;
+
+      const flicker = 0.7 + Math.sin(p.phase * 2) * 0.3;
+      const alpha = p.opacity * glow * flicker;
+
+      const gradient = gl.createRadialGradient(
+        p.x,
+        p.y,
+        0,
+        p.x,
+        p.y,
+        p.radius * 6,
+      );
+      gradient.addColorStop(0, `rgba(180, 255, 240, ${alpha})`);
+      gradient.addColorStop(0.4, `rgba(120, 230, 210, ${alpha * 0.5})`);
+      gradient.addColorStop(1, "rgba(80, 200, 180, 0)");
+      gl.fillStyle = gradient;
+      gl.beginPath();
+      gl.arc(p.x, p.y, p.radius * 6, 0, Math.PI * 2);
+      gl.fill();
+
+      gl.fillStyle = `rgba(240, 255, 250, ${alpha * 1.4})`;
+      gl.beginPath();
+      gl.arc(p.x, p.y, p.radius * 0.6, 0, Math.PI * 2);
+      gl.fill();
+    }
+
+    animationFrame = window.requestAnimationFrame(animate);
+  };
+
+  onMounted(() => {
+    resize();
+    window.addEventListener("resize", resize);
+    animationFrame = window.requestAnimationFrame(animate);
+  });
+
+  onUnmounted(() => {
+    window.cancelAnimationFrame(animationFrame);
+    window.removeEventListener("resize", resize);
+  });
+
+  watch(
+    () => settingsRef.value.particleCount,
+    () => initParticles(),
+  );
+
+  return canvasRef;
 };
 
-const updateSettings = (ctx, patch) => {
-  if (!state) return;
-  state.settings = normalizeSettings({ ...state.settings, ...patch });
-  for (const entry of mountedHosts) {
-    applyHostSettings(entry);
-    if (entry.snapshot) syncHostLayout(entry, entry.snapshot);
-  }
-  scheduleSave(ctx);
-};
+/**
+ * 歌词页皮肤组件：竖排居中歌词，行间用斜线分隔。
+ */
+const createLyricSkinComponent = (ctx) => {
+  const { defineComponent, h, computed } = ctx.vue;
+  const LyricPlayerControls = ctx.vue.defineAsyncComponent(
+    ctx.ui.components.LyricPlayerControls,
+  );
+  const BarrageControls = ctx.vue.defineAsyncComponent(
+    ctx.ui.components.BarrageControls,
+  );
 
-const getReducedMotionFactor = (snapshot) =>
-  snapshot?.reducedMotion ? 0.22 : 1;
+  return defineComponent({
+    name: "WaterLyricSkin",
+    props: {
+      page: { type: Object, required: true },
+    },
+    setup(props) {
+      const skin = ctx.ui.lyricsPage.useSkin();
+      const settings = computed(() => normalizeSettings(skin.settings.value));
+      const canvasRef = createParticleBackground(ctx, settings);
 
-const applyHostSettings = (entry) => {
-  if (!state) return;
-  const settings = state.settings;
-  const host = entry.host;
-  const intensity = settings.intensity / 100;
-  const glow = settings.glow / 100;
-  host.root.dataset.waterLyricEnabled = settings.enabled ? "true" : "false";
-  host.root.dataset.waterLyricItalic = settings.italic ? "true" : "false";
-  host.root.dataset.waterLyricTypography = settings.typography
-    ? "true"
-    : "false";
-  host.root.dataset.waterLyricConnectors = settings.connectors
-    ? "true"
-    : "false";
-  host.root.style.setProperty("--echo-water-intensity", String(intensity));
-  host.root.style.setProperty(
-    "--echo-water-text-skew",
-    settings.italic ? "-7deg" : "0deg",
-  );
-  host.root.style.setProperty(
-    "--echo-water-glow-size",
-    `${(22 * glow).toFixed(1)}px`,
-  );
-  host.root.style.setProperty(
-    "--echo-water-connector-height",
-    `${(32 + intensity * 30).toFixed(1)}px`,
-  );
-  host.root.style.setProperty(
-    "--echo-water-connector-width",
-    `${(0.72 + intensity * 0.42).toFixed(2)}px`,
-  );
-  host.root.style.setProperty(
-    "--echo-water-drop-size",
-    `${(3.4 + intensity * 2.4).toFixed(1)}px`,
-  );
-  host.root.style.setProperty(
-    "--echo-water-caustic-opacity",
-    (0.06 + intensity * 0.11).toFixed(3),
-  );
-  host.root.style.setProperty("--echo-water-stagger", String(settings.stagger));
-};
+      const VISIBLE_RANGE = 4;
+      const visibleLines = computed(() => {
+        const lyrics = props.page.state.value.lyrics;
+        const lines = lyrics.lines || [];
+        const current = lyrics.currentIndex;
+        if (!lines.length) return [];
+        const start = Math.max(0, current - VISIBLE_RANGE);
+        const end = Math.min(lines.length, current + VISIBLE_RANGE + 1);
+        return lines.slice(start, end).map((line, i) => ({
+          text: line.text,
+          distance: start + i - current,
+        }));
+      });
 
-const syncHostLayout = (entry, snapshot) => {
-  if (!state) return;
-  entry.snapshot = snapshot;
-  const settings = state.settings;
-  const motionFactor = getReducedMotionFactor(snapshot);
-  const currentIndex = Number(snapshot.currentIndex);
-  const hasCurrent = Number.isFinite(currentIndex) && currentIndex >= 0;
-  const intensity = settings.intensity / 100;
-  const connectorHeight = 32 + intensity * 30;
-  const rows = entry.host.scroller.querySelectorAll("[data-echo-lyric-row]");
-  rows.forEach((row) => {
-    const index = Number(row.getAttribute("data-echo-lyric-index") || -1);
-    const distance = hasCurrent ? index - currentIndex : 0;
-    const absDistance = Math.abs(distance);
-    const side = distance % 2 === 0 ? -1 : 1;
-    const x = side * Math.min(absDistance, 4) * settings.stagger * 0.52;
-    const y = Math.min(absDistance, 4) * settings.intensity * 0.035;
-    const opacity = Math.max(0.18, 1 - absDistance * 0.16);
-    const connectorVisible =
-      settings.connectors && hasCurrent && distance >= -1 && distance <= 2;
-    const connectorBias = distance === 0 ? 1 : distance > 0 ? 0.66 : 0.46;
-    const connectorStrength = connectorVisible
-      ? Math.max(0, 1 - absDistance * 0.34) * connectorBias
-      : 0;
-    const targetDistance = distance + 1;
-    const connectorSide = targetDistance % 2 === 0 ? -1 : 1;
-    const connectorAngle =
-      connectorSide * (18 + Math.min(absDistance, 2) * 4.5);
-    const connectorX = connectorSide * (5 + Math.min(absDistance, 2) * 3.5);
-    const angleRadians = (Math.abs(connectorAngle) * Math.PI) / 180;
-    const dropX =
-      connectorX + Math.sin(angleRadians) * connectorHeight * connectorSide;
-    row.style.setProperty("--echo-water-row-x", `${x.toFixed(2)}px`);
-    row.style.setProperty(
-      "--echo-water-row-y",
-      `${(y * motionFactor).toFixed(2)}px`,
-    );
-    row.style.setProperty("--echo-water-row-opacity", opacity.toFixed(2));
-    row.style.setProperty("--echo-water-row-distance", String(distance));
-    row.style.setProperty(
-      "--echo-water-connector-alpha",
-      (connectorStrength * (0.18 + intensity * 0.26)).toFixed(3),
-    );
-    row.style.setProperty(
-      "--echo-water-drop-alpha",
-      (connectorStrength * (0.38 + intensity * 0.3)).toFixed(3),
-    );
-    row.style.setProperty(
-      "--echo-water-connector-angle",
-      `${connectorAngle.toFixed(1)}deg`,
-    );
-    row.style.setProperty(
-      "--echo-water-connector-x",
-      `${connectorX.toFixed(1)}px`,
-    );
-    row.style.setProperty("--echo-water-drop-x", `${dropX.toFixed(1)}px`);
-    row.style.setProperty(
-      "--echo-water-drop-scale",
-      (0.72 + connectorStrength * 0.36).toFixed(3),
-    );
+      const hasLyrics = computed(() => visibleLines.value.length > 0);
+
+      const openQueue = () => props.page.panels.open("queue");
+      const openComment = () => props.page.panels.open("comments");
+      const openAddToPlaylist = () => props.page.panels.open("add-to-playlist");
+
+      const barrageResource = computed(() => {
+        const track = props.page.state.value.track;
+        return {
+          type: "song-barrage",
+          hash: track?.hash || "",
+          name: track?.name || "",
+        };
+      });
+      const barrageEnabled = computed({
+        get: () => props.page.barrage.enabled,
+        set: (v) => {
+          props.page.barrage.enabled = v;
+        },
+      });
+      const handleBarrageSent = (content) => props.page.barrage.send(content);
+
+      return () => {
+        const s = settings.value;
+        return h("div", { class: "water-lyric-skin" }, [
+          h("canvas", { ref: canvasRef, class: "water-lyric-bg" }),
+          h(
+            "div",
+            { class: "water-lyric-content" },
+            hasLyrics.value
+              ? visibleLines.value.map((line) =>
+                  h("div", { class: "water-lyric-row" }, [
+                    h(
+                      "div",
+                      {
+                        class: "water-lyric-line",
+                        "data-current": line.distance === 0 ? "true" : "false",
+                        style: {
+                          fontSize: `${s.fontSize}px`,
+                          opacity:
+                            line.distance === 0
+                              ? 1
+                              : Math.max(
+                                  0.25,
+                                  1 - Math.abs(line.distance) * 0.18,
+                                ),
+                          transform: `scale(${
+                            line.distance === 0
+                              ? 1.08
+                              : Math.max(
+                                  0.85,
+                                  1 - Math.abs(line.distance) * 0.04,
+                                )
+                          })`,
+                        },
+                      },
+                      line.text || " ",
+                    ),
+                    line.distance < VISIBLE_RANGE
+                      ? h("div", {
+                          class: "water-lyric-connector",
+                          style: {
+                            opacity: s.connectorOpacity / 100,
+                            height: `${s.lineSpacing}px`,
+                          },
+                        })
+                      : null,
+                  ]),
+                )
+              : [h("div", { class: "water-lyric-empty" }, "暂无歌词")],
+          ),
+          h(
+            LyricPlayerControls,
+            {
+              class: "water-lyric-controls",
+              onOpenQueue: openQueue,
+              onOpenComment: openComment,
+              onOpenAddToPlaylist: openAddToPlaylist,
+              onOpenSkins: () => ctx.ui.lyricsPage.openSkins(),
+            },
+            {
+              "song-actions": () =>
+                h(BarrageControls, {
+                  modelValue: barrageEnabled.value,
+                  "onUpdate:modelValue": (v) => (barrageEnabled.value = v),
+                  resource: barrageResource.value,
+                  variant: "lyric",
+                  onSent: handleBarrageSent,
+                }),
+            },
+          ),
+        ]);
+      };
+    },
   });
 };
 
-const createWaterOverlay = () => {
-  const root = document.createElement("div");
-  root.className = "echo-water-lyric-overlay";
-  root.innerHTML = `
-    <svg class="echo-water-lyric-filter-svg" width="0" height="0" aria-hidden="true" focusable="false">
-      <filter id="echo-water-lyric-filter">
-        <feTurbulence
-          class="echo-water-lyric-turbulence"
-          type="fractalNoise"
-          baseFrequency="0.012 0.038"
-          numOctaves="2"
-          seed="7"
-          result="noise"
-        />
-        <feDisplacementMap
-          class="echo-water-lyric-displacement"
-          in="SourceGraphic"
-          in2="noise"
-          scale="1.6"
-          xChannelSelector="R"
-          yChannelSelector="G"
-        />
-      </filter>
-    </svg>
-    <div class="echo-water-lyric-caustic echo-water-lyric-caustic-a"></div>
-    <div class="echo-water-lyric-caustic echo-water-lyric-caustic-b"></div>
-  `;
-  return root;
-};
-
-const startWaterAnimation = (entry) => {
-  const tick = (time) => {
-    if (!state) return;
-    const settings = state.settings;
-    const snapshot = entry.snapshot;
-    const reducedFactor = getReducedMotionFactor(snapshot);
-    const active = settings.enabled && snapshot?.hasLyrics;
-    const intensity = active ? (settings.intensity / 100) * reducedFactor : 0;
-    const wave = 0.01 + intensity * 0.01 + Math.sin(time / 1900) * 0.002;
-    const vertical = 0.032 + intensity * 0.016 + Math.cos(time / 2300) * 0.003;
-    const scale = active ? 0.8 + intensity * 3.4 : 0;
-
-    entry.turbulence?.setAttribute(
-      "baseFrequency",
-      `${wave.toFixed(4)} ${vertical.toFixed(4)}`,
-    );
-    entry.displacement?.setAttribute("scale", scale.toFixed(2));
-    entry.frame = window.requestAnimationFrame(tick);
-  };
-  entry.frame = window.requestAnimationFrame(tick);
-};
-
-const mountWaterEffect = (host) => {
-  const overlay = createWaterOverlay();
-  host.overlay.appendChild(overlay);
-
-  const entry = {
-    host,
-    overlay,
-    turbulence: overlay.querySelector(".echo-water-lyric-turbulence"),
-    displacement: overlay.querySelector(".echo-water-lyric-displacement"),
-    frame: 0,
-    syncFrame: 0,
-    snapshot: host.getSnapshot(),
-    unsubscribe: null,
-  };
-
-  const scheduleLayoutSync = (snapshot) => {
-    entry.snapshot = snapshot;
-    if (entry.syncFrame) return;
-    entry.syncFrame = window.requestAnimationFrame(() => {
-      entry.syncFrame = 0;
-      syncHostLayout(entry, entry.snapshot);
-    });
-  };
-
-  mountedHosts.add(entry);
-  applyHostSettings(entry);
-  syncHostLayout(entry, entry.snapshot);
-  entry.unsubscribe = host.subscribe(scheduleLayoutSync);
-  startWaterAnimation(entry);
-
-  return () => {
-    mountedHosts.delete(entry);
-    entry.unsubscribe?.();
-    if (entry.frame) window.cancelAnimationFrame(entry.frame);
-    if (entry.syncFrame) window.cancelAnimationFrame(entry.syncFrame);
-    entry.host.root.removeAttribute("data-water-lyric-enabled");
-    entry.host.root.removeAttribute("data-water-lyric-italic");
-    entry.host.root.removeAttribute("data-water-lyric-typography");
-    entry.host.root.removeAttribute("data-water-lyric-connectors");
-    entry.overlay.remove();
-  };
-};
-
-const WATER_EFFECT_CSS = `
-.echo-water-lyrics {
-  --echo-water-intensity: 0.62;
-  --echo-water-glow-size: 9.2px;
-  --echo-water-text-skew: -7deg;
-  --echo-water-stagger: 44;
-  --echo-water-connector-height: 55px;
-  --echo-water-connector-width: 0.98px;
-  --echo-water-drop-size: 4.9px;
-  --echo-water-caustic-opacity: 0.128;
-}
-
-.echo-water-lyrics[data-water-lyric-enabled="true"] .lyric-scroller {
-  mask-image: linear-gradient(180deg, transparent 0%, black 13%, black 86%, transparent 100%);
-  -webkit-mask-image: linear-gradient(180deg, transparent 0%, black 13%, black 86%, transparent 100%);
-}
-
-.echo-water-lyrics[data-water-lyric-enabled="true"] [data-echo-lyric-row] {
-  opacity: var(--echo-water-row-opacity, 1);
-}
-
-.echo-water-lyrics[data-water-lyric-enabled="true"] [data-echo-lyric-line] {
+const SKIN_CSS = `
+.water-lyric-skin {
   position: relative;
-  will-change: transform, opacity, filter;
-  transform:
-    translate3d(var(--echo-water-row-x, 0px), var(--echo-water-row-y, 0px), 0)
-    skewX(var(--echo-water-text-skew))
-    scale(0.98);
-  transition:
-    opacity 420ms ease,
-    filter 420ms ease,
-    transform 560ms cubic-bezier(0.22, 1, 0.36, 1);
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #061614;
+  display: flex;
+  flex-direction: column;
 }
 
-.echo-water-lyrics[data-water-lyric-enabled="true"][data-water-lyric-italic="true"] [data-echo-lyric-primary] {
-  font-style: italic;
-}
-
-.echo-water-lyrics[data-water-lyric-enabled="true"][data-water-lyric-typography="true"] [data-echo-lyric-primary] {
-  letter-spacing: 0.18em !important;
-}
-
-.echo-water-lyrics[data-water-lyric-enabled="true"][data-water-lyric-typography="true"] [data-echo-lyric-secondary] {
-  letter-spacing: 0.08em;
-}
-
-.echo-water-lyrics[data-water-lyric-enabled="true"] [data-echo-lyric-line][data-echo-lyric-current="true"] {
-  filter:
-    url("#echo-water-lyric-filter")
-    drop-shadow(0 0 var(--echo-water-glow-size) rgba(178, 255, 238, 0.66));
-  transform:
-    translate3d(var(--echo-water-row-x, 0px), var(--echo-water-row-y, 0px), 0)
-    skewX(var(--echo-water-text-skew))
-    scale(1.08);
-}
-
-.echo-water-lyrics[data-water-lyric-enabled="true"][data-water-lyric-connectors="true"] [data-echo-lyric-line]::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: calc(100% + 10px);
-  width: var(--echo-water-connector-width);
-  height: var(--echo-water-connector-height);
-  border-radius: 999px;
-  transform:
-    translate3d(calc(-50% + var(--echo-water-connector-x, 0px)), 0, 0)
-    rotate(var(--echo-water-connector-angle, 18deg));
-  transform-origin: top center;
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0),
-      rgba(234, 255, 249, 0.76) 16%,
-      rgba(133, 226, 255, 0.48) 58%,
-      rgba(255, 255, 255, 0)
-    );
-  filter:
-    drop-shadow(0 0 4px rgba(154, 236, 255, 0.42))
-    drop-shadow(0 0 10px rgba(133, 255, 231, 0.18));
-  opacity: var(--echo-water-connector-alpha, 0);
-  pointer-events: none;
-  transition:
-    opacity 360ms ease,
-    transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.echo-water-lyrics[data-water-lyric-enabled="true"][data-water-lyric-connectors="true"] [data-echo-lyric-line]::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: calc(100% + 10px + var(--echo-water-connector-height) - 2px);
-  width: var(--echo-water-drop-size);
-  height: calc(var(--echo-water-drop-size) * 1.34);
-  border-radius: 55% 55% 62% 62%;
-  transform:
-    translate3d(calc(-50% + var(--echo-water-drop-x, 0px)), 0, 0)
-    rotate(var(--echo-water-connector-angle, 18deg))
-    scale(var(--echo-water-drop-scale, 0.72));
-  transform-origin: center top;
-  background:
-    radial-gradient(circle at 38% 24%, rgba(255, 255, 255, 0.92) 0 17%, transparent 22%),
-    linear-gradient(180deg, rgba(229, 255, 251, 0.9), rgba(87, 207, 255, 0.42));
-  box-shadow:
-    0 0 7px rgba(143, 238, 255, 0.36),
-    0 0 16px rgba(130, 255, 224, 0.18);
-  opacity: var(--echo-water-drop-alpha, 0);
-  pointer-events: none;
-  transition:
-    opacity 360ms ease,
-    transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.echo-water-lyric-overlay {
+.water-lyric-bg {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.water-lyric-content {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: max(46px, calc(35px / var(--window-zoom-factor, 1))) 8% 8%;
+  overflow: hidden;
+}
+
+.water-lyric-controls {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+}
+
+.water-lyric-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.water-lyric-line {
+  color: #f0fffa;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-shadow: 0 0 18px rgba(120, 255, 220, 0.35), 0 2px 8px rgba(0, 0, 0, 0.5);
+  transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform, opacity;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.water-lyric-line[data-current="true"] {
+  color: #ffffff;
+  font-weight: 700;
+  text-shadow: 0 0 24px rgba(160, 255, 230, 0.6), 0 0 48px rgba(100, 220, 200, 0.3), 0 2px 10px rgba(0, 0, 0, 0.6);
+}
+
+.water-lyric-connector {
+  width: 1.5px;
+  margin: 6px 0;
+  background: linear-gradient(180deg, rgba(180, 255, 240, 0), rgba(180, 255, 240, 0.55) 45%, rgba(120, 220, 200, 0.15) 100%);
+  transform: rotate(14deg);
+  border-radius: 999px;
+  filter: blur(0.3px);
   pointer-events: none;
 }
 
-.echo-water-lyric-filter-svg {
-  position: absolute;
-  width: 0;
-  height: 0;
-}
-
-.echo-water-lyric-caustic {
-  position: absolute;
-  left: 18%;
-  right: 18%;
-  height: 34%;
-  border-radius: 999px;
-  opacity: var(--echo-water-caustic-opacity);
-  filter: blur(34px);
-  transform: translate3d(0, 0, 0);
-  background:
-    radial-gradient(circle at 20% 50%, rgba(130, 255, 224, 0.36), transparent 36%),
-    radial-gradient(circle at 70% 40%, rgba(89, 180, 255, 0.28), transparent 38%);
-}
-
-.echo-water-lyric-caustic-a {
-  top: 18%;
-  animation: echo-water-lyric-drift-a 12s ease-in-out infinite alternate;
-}
-
-.echo-water-lyric-caustic-b {
-  bottom: 12%;
-  animation: echo-water-lyric-drift-b 15s ease-in-out infinite alternate;
-}
-
-.echo-water-lyrics[data-water-lyric-enabled="false"] .echo-water-lyric-overlay,
-.echo-water-lyrics[data-echo-lyric-reduced-motion="true"] .echo-water-lyric-caustic {
-  display: none;
-}
-
-@keyframes echo-water-lyric-drift-a {
-  from { transform: translate3d(-5%, -2%, 0) scale(0.96); }
-  to { transform: translate3d(6%, 3%, 0) scale(1.08); }
-}
-
-@keyframes echo-water-lyric-drift-b {
-  from { transform: translate3d(7%, 2%, 0) scale(1.04); }
-  to { transform: translate3d(-6%, -3%, 0) scale(0.94); }
+.water-lyric-empty {
+  color: rgba(240, 255, 250, 0.4);
+  font-size: 18px;
+  letter-spacing: 0.1em;
 }
 `;
 
 const SETTINGS_CSS = `
-.echo-water-settings {
+.water-lyric-settings {
   display: grid;
-  gap: 14px;
+  gap: 16px;
   color: var(--color-text-main);
 }
 
-.echo-water-settings-row {
+.water-lyric-settings-row {
   display: grid;
-  gap: 7px;
+  gap: 8px;
 }
 
-.echo-water-settings-line {
+.water-lyric-settings-line {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
 }
 
-.echo-water-settings-title {
+.water-lyric-settings-title {
   font-size: 13px;
-  font-weight: 760;
+  font-weight: 600;
 }
 
-.echo-water-settings-hint {
+.water-lyric-settings-value {
   color: var(--color-text-secondary);
   font-size: 12px;
-  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
 }
 
-.echo-water-settings-actions {
+.water-lyric-settings-hint {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.water-lyric-settings-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
 }
 `;
 
-const createSettingsComponent = (ctx) =>
-  ctx.vue.defineComponent({
-    name: "WaterLyricsSettings",
+/**
+ * 设置面板组件。在 setup 中调用 useSkin() 获取宿主管理的配置句柄，
+ * patch 会经过 validate 校验后持久化到宿主设置。
+ */
+const createSettingsComponent = (ctx) => {
+  const { defineComponent, h } = ctx.vue;
+  const Button = ctx.vue.defineAsyncComponent(ctx.ui.components.Button);
+  const Slider = ctx.vue.defineAsyncComponent(ctx.ui.components.Slider);
+
+  return defineComponent({
+    name: "WaterLyricSettings",
     setup() {
-      const { defineAsyncComponent, h } = ctx.vue;
-      const Button = defineAsyncComponent(ctx.ui.components.Button);
-      const Slider = defineAsyncComponent(ctx.ui.components.Slider);
-      const Switch = defineAsyncComponent(ctx.ui.components.Switch);
+      const skin = ctx.ui.lyricsPage.useSkin();
 
       const slider = (label, key, min, max, hint) =>
-        h("div", { class: "echo-water-settings-row" }, [
-          h("div", { class: "echo-water-settings-line" }, [
-            h("span", { class: "echo-water-settings-title" }, label),
+        h("div", { class: "water-lyric-settings-row" }, [
+          h("div", { class: "water-lyric-settings-line" }, [
+            h("span", { class: "water-lyric-settings-title" }, label),
             h(
               "span",
-              { class: "echo-water-settings-hint" },
-              String(state.settings[key]),
+              { class: "water-lyric-settings-value" },
+              String(skin.settings.value[key]),
             ),
           ]),
           h(Slider, {
-            modelValue: state.settings[key],
+            modelValue: skin.settings.value[key],
             min,
             max,
             step: 1,
             "onUpdate:modelValue": (value) =>
-              updateSettings(ctx, { [key]: Number(value) }),
+              skin.patch({ [key]: Number(value) }),
           }),
-          hint ? h("div", { class: "echo-water-settings-hint" }, hint) : null,
-        ]);
-
-      const toggle = (label, key, hint) =>
-        h("div", { class: "echo-water-settings-row" }, [
-          h("label", { class: "echo-water-settings-line" }, [
-            h("span", { class: "echo-water-settings-title" }, label),
-            h(Switch, {
-              modelValue: Boolean(state.settings[key]),
-              "onUpdate:modelValue": (value) =>
-                updateSettings(ctx, { [key]: Boolean(value) }),
-            }),
-          ]),
-          hint ? h("div", { class: "echo-water-settings-hint" }, hint) : null,
+          hint ? h("div", { class: "water-lyric-settings-hint" }, hint) : null,
         ]);
 
       return () =>
-        h("div", { class: "echo-water-settings" }, [
-          toggle(
-            "启用动效",
-            "enabled",
-            "关闭后保留插件设置，但不修改页面歌词外观。",
+        h("div", { class: "water-lyric-settings" }, [
+          slider(
+            "光斑数量",
+            "particleCount",
+            0,
+            200,
+            "背景中浮动的水面光斑数量。",
           ),
-          toggle(
-            "歌词斜体",
-            "italic",
-            "默认开启；关闭后保留水波和错位，但主歌词不再倾斜。",
+          slider("漂浮速度", "particleSpeed", 0, 200, "光斑上浮和漂移的速度。"),
+          slider(
+            "辉光强度",
+            "glowIntensity",
+            0,
+            100,
+            "光斑和当前行文字的辉光强度。",
           ),
-          toggle(
-            "错位字距排版",
-            "typography",
-            "接近音乐视频字幕的拉开字距效果。",
+          slider("行间距", "lineSpacing", 40, 140, "歌词行之间的垂直间距。"),
+          slider(
+            "分隔线透明度",
+            "connectorOpacity",
+            0,
+            100,
+            "歌词行间斜线的可见程度。",
           ),
-          toggle("歌词连线", "connectors", "为上下行添加细线连接。"),
-          slider("水波强度", "intensity", 0, 100, "影响文字扰动和背景水光。"),
-          slider("行错位", "stagger", 0, 80, "控制上下歌词左右错开的距离。"),
-          slider("辉光", "glow", 0, 100, "控制当前歌词行的柔光强度。"),
-          h("div", { class: "echo-water-settings-actions" }, [
+          slider("字号", "fontSize", 16, 56, "歌词文字大小。"),
+          h("div", { class: "water-lyric-settings-actions" }, [
             h(
               Button,
               {
                 variant: "outline",
                 size: "xs",
-                onClick: () => updateSettings(ctx, DEFAULT_SETTINGS),
+                onClick: () => skin.patch(DEFAULT_SETTINGS),
               },
               { default: () => "恢复默认" },
             ),
@@ -537,42 +534,33 @@ const createSettingsComponent = (ctx) =>
         ]);
     },
   });
+};
+
+const validateSettings = (values) => {
+  const normalized = normalizeSettings(values);
+  return JSON.stringify(normalized) === JSON.stringify(values)
+    ? true
+    : { errors: ["设置值超出范围"] };
+};
 
 export async function activate(ctx) {
-  state = ctx.vue.reactive({
-    settings: normalizeSettings(await ctx.storage.get(STORAGE_KEY)),
-  });
+  ctx.css.inject(SKIN_CSS, { id: "water-lyric-skin" });
+  ctx.css.inject(SETTINGS_CSS, { id: "water-lyric-settings" });
 
-  settingsStyleDispose = ctx.css.inject(SETTINGS_CSS, {
-    id: "water-lyrics-settings",
-  });
-
-  settingsDispose = ctx.ui.settings.define({
-    title: "水波歌词动效",
-    description: "调整页面歌词的水波、斜体、错位排版和辉光强度。",
-    component: createSettingsComponent(ctx),
-  });
-
-  effectDispose = ctx.lyricEffects.register({
+  ctx.ui.lyricsPage.register({
     id: "water",
-    title: "水波歌词",
-    scope: "page",
-    layer: "decorator",
-    className: "echo-water-lyrics",
-    css: WATER_EFFECT_CSS,
-    mount: mountWaterEffect,
+    title: "沉浸水波歌词",
+    preview: createWaterPreviewSvg(),
+    component: createLyricSkinComponent(ctx),
+    titlebar: "host",
+    settings: {
+      defaults: DEFAULT_SETTINGS,
+      validate: validateSettings,
+      component: createSettingsComponent(ctx),
+    },
   });
 }
 
 export function deactivate() {
-  if (saveTimer) window.clearTimeout(saveTimer);
-  saveTimer = 0;
-  effectDispose?.();
-  settingsDispose?.();
-  settingsStyleDispose?.();
-  effectDispose = null;
-  settingsDispose = null;
-  settingsStyleDispose = null;
-  state = null;
-  mountedHosts.clear();
+  // 宿主会自动清理 lyricsPage 注册和注入的 CSS
 }
