@@ -99,6 +99,27 @@
       ]
     },
     {
+      "id": "mv-enhancer",
+      "path": "mv-enhancer",
+      "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/mv-enhancer",
+      "tags": [
+        "mv",
+        "video",
+        "quality"
+      ]
+    },
+    {
+      "id": "playback-control-order",
+      "path": "playback-control-order",
+      "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/playback-control-order",
+      "tags": [
+        "player",
+        "appearance",
+        "customization",
+        "sidebar"
+      ]
+    },
+    {
       "id": "webdav-backup",
       "path": "webdav-backup",
       "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/webdav-backup",
@@ -312,16 +333,17 @@
     },
     {
       "id": "folia-style",
-      "name": "Folia 歌词 beta",
-      "description": "基于 Folia 的歌词可视化插件。",
+      "name": "Folia 歌词",
+      "description": "基于 Folia 的播放页，拥有多种绚丽的歌词动画效果。",
       "author": "Oneday5799",
-      "path": "folia-style",
-      "repo": "https://github.com/oneday5799/EchoMusicPlugins",
-      "homepage": "https://github.com/oneday5799/EchoMusicPlugins/tree/main/folia-style",
+      "path": "",
+      "repo": "https://github.com/EchoMusic-org/folia-style",
+      "homepage": "https://github.com/EchoMusic-org/folia-style",
       "tags": [
         "player",
         "lyrics",
-        "lyric-effects"
+        "lyric-effects",
+        "folia"
       ]
     },
     {
@@ -439,6 +461,21 @@
         "simplify",
         "ui",
         "appearance"
+      ]
+    },
+    {
+      "id": "mouse-gesture",
+      "name": "鼠标手势控制",
+      "description": "使用鼠标手势控制软件的播放、导航和滚动等操作。",
+      "author": "Oneday5799",
+      "path": "mouse-gesture",
+      "repo": "https://github.com/oneday5799/EchoMusicPlugins",
+      "homepage": "https://github.com/oneday5799/EchoMusicPlugins/tree/main/mouse-gesture",
+      "tags": [
+        "gesture",
+        "mouse",
+        "productivity",
+        "player"
       ]
     }
   ]

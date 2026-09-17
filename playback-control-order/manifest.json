@@ -1,0 +1,9 @@
+{
+  "id": "playback-control-order",
+  "name": "界面与播放控件",
+  "version": "1.1.1",
+  "description": "统一管理侧边栏、首页播放栏和播放器页控制栏的显示、隐藏与排序。",
+  "author": "Codex Luna",
+  "icon": "icon.svg",
+  "main": "index.js"
+}
