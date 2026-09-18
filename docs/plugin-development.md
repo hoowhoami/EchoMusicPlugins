@@ -2,7 +2,7 @@
 
 本文档说明 EchoMusic 插件的 Manifest、生命周期、宿主 API、安全边界和完整接入示例。官方插件源和示例插件位于 [EchoMusicPlugins 仓库](../README.md)。
 
-通用 WebGPU 绘图、动画、画布生命周期及可选 HDR 输出见 [Graphics 插件绘图 API](graphics.md)。
+通用 WebGPU 绘图、动画、画布生命周期及可选 HDR 输出见 [Graphics 插件绘图 API](graphics.md)。本地 HTTP / WebSocket 服务见 [本地 Web 服务与 WebSocket](web-server.md)。
 
 ## 插件系统定位
 
@@ -218,7 +218,7 @@ pnpm exec electron . --safe-mode
 
 `capabilities.unrestrictedNetwork` 可选。插件如需通过 `ctx.net.request()` 使用主进程 Axios 的 Node.js HTTP adapter，或自定义浏览器 Fetch 不允许设置的 `User-Agent`、`Referer`、`Cookie`、`Origin`、`Host` 等请求头，必须显式设为 `true`。该能力不受浏览器 CORS 和禁止头规则约束，也允许访问本机及内网地址；只应在确实需要精确控制请求的插件中声明。普通 Web 请求继续使用 `ctx.net.fetch()`。
 
-`capabilities.webServer` 可选。插件如需通过 `ctx.webServer.listen()` 创建可被其他本机软件访问的 HTTP 页面或接口，必须显式设为 `true`。服务默认只监听 `127.0.0.1`，适合 Wallpaper Engine、OBS、本地脚本或其他桌面软件读取 EchoMusic 当前状态、歌词页面、可视化页面等场景。插件禁用、卸载、安全模式、运行上下文销毁或应用退出时，宿主会自动释放端口。
+`capabilities.webServer` 可选。插件如需通过 `ctx.webServer.listen()` 创建可被其他本机软件访问的 HTTP 页面或接口，或通过 `ctx.webServer.onConnection()` 在同一端口接受 WebSocket，必须显式设为 `true`。服务默认只监听 `127.0.0.1`，适合 Wallpaper Engine、OBS、本地脚本或其他桌面软件读取 EchoMusic 当前状态、歌词页面、可视化页面等场景。插件禁用、卸载、安全模式、运行上下文销毁或应用退出时，宿主会自动释放端口并断开连接。完整语义与示例见 [本地 Web 服务与 WebSocket](web-server.md)。
 
 `capabilities.serverIntercept` 可选。插件如需通过 `ctx.server.intercept()` 以洋葱中间件方式介入主程序发往酷狗 server 的 API 请求，必须显式设为 `true`。支持按 `match` 过滤、按 `priority` 排序，可读改请求参数/请求体/请求头、不调用 `next()` 短路 Mock、或加工/覆盖响应；修改发生在签名之前，宿主自动重算签名。该能力可读取 Authorization 中的登录凭证和全部听歌数据，敏感度与 `unrestrictedNetwork` 同级；拦截器异常一律 fail-open 放行。完整语义、优先级约定与示例见 [服务请求拦截 API](server-interceptor.md)。
 
@@ -363,7 +363,7 @@ export default {
 | `ctx.process.launch(options)`                                         | 启动插件目录内的本地辅助程序，要求 manifest 声明 `capabilities.process: true`                                                                                                                                                                                                                                                                                                                                 |
 | `ctx.process.terminate(pid)`                                          | 终止当前插件通过 `ctx.process.launch()` 启动的进程                                                                                                                                                                                                                                                                                                                                                            |
 | `ctx.sqlite`                                                          | 插件私有 SQLite API：`open(options?)`、`listDatabases()`、`deleteDatabase(name?)`，打开后可用 `db.exec/run/get/all/transaction/close`，要求 manifest 声明 `capabilities.sqlite: true`                                                                                                                                                                                                                          |
-| `ctx.webServer`                                                       | 本地 HTTP 服务 API：`listen(handler, options?)`、`status()`、`close()`、`onRequest(handler)`，要求 manifest 声明 `capabilities.webServer: true`；默认监听 `127.0.0.1`，可供访问                                                                                                                                                                                              |
+| `ctx.webServer`                                                       | 本地 HTTP / WebSocket API：`listen(handler | options)`、`onConnection(handler, options?)`、`status()`、`close()`、`onRequest(handler)`，要求 manifest 声明 `capabilities.webServer: true`；只监听 `127.0.0.1`。详见 [本地 Web 服务与 WebSocket](web-server.md) |
 | `ctx.theme.surface.set(options)`                                      | 请求宿主调整主界面表面透明度和模糊效果，适合背景图、沉浸皮肤等插件                                                                                                                                                                                                                                                                                                                                            |
 | `ctx.theme.surface.clear()`                                           | 清理当前插件提交的表面效果                                                                                                                                                                                                                                                                                                                                                                                    |
 | `ctx.theme.pageTransition.set(options)`                               | 请求宿主调整页面切换动效，适合页面动效和无障碍偏好插件                                                                                                                                                                                                                                                                                                                                                        |
@@ -965,17 +965,9 @@ const response = await ctx.net.request({
 
 ### 本地 Web 服务
 
-插件可以用 `ctx.webServer.listen(handler, options?)` 创建本机 HTTP 服务，把插件生成的页面或接口暴露给其他软件访问。使用前必须在 `manifest.json` 中声明：
+插件可以用 `ctx.webServer.listen()` 创建本机 HTTP 服务，并在同一次调用里用 `onConnection` 接受 WebSocket。使用前必须在 `manifest.json` 中声明 `capabilities.webServer: true`。请求对象、返回值、Wallpaper Engine 页面示例、WebSocket 连接模型与限制见 [本地 Web 服务与 WebSocket](web-server.md)。
 
-```json
-{
-  "capabilities": {
-    "webServer": true
-  }
-}
-```
-
-最小示例：
+最小 HTTP 示例：
 
 ```js
 export async function activate(ctx) {
@@ -990,143 +982,26 @@ export async function activate(ctx) {
   }
 
   ctx.toast.success(`本地页面已启动：${result.url}`);
-  console.log("复制这个地址给 Wallpaper Engine / OBS / 浏览器：", result.url);
 }
 ```
 
-`listen()` 默认使用随机可用端口并绑定 `127.0.0.1`，返回：
-
-```js
-{
-  ok: true,
-  pluginId: "my-plugin",
-  host: "127.0.0.1",
-  port: 53217,
-  origin: "http://127.0.0.1:53217",
-  url: "http://127.0.0.1:53217/",
-  startedAt: 1710000000000
-}
-```
-
-也可以指定端口：
-
-```js
-await ctx.webServer.listen(handler, { port: 38123 });
-```
-
-`handler(request)` 收到的请求对象：
-
-| 字段 | 说明 |
-| --- | --- |
-| `requestId` | 本次请求 id，普通插件通常不需要关心 |
-| `method` | HTTP 方法，如 `"GET"` / `"POST"` |
-| `url` | 路径和 query，如 `"/lyrics?theme=dark"` |
-| `path` | URL pathname，如 `"/lyrics"` |
-| `query` | query 对象；重复参数会变成字符串数组 |
-| `headers` | 请求头对象 |
-| `body` | 请求体 `ArrayBuffer` |
-| `remoteAddress` | 远端地址，通常是本机地址 |
-
-返回值可以是字符串、普通 JSON、二进制，或完整响应对象：
-
-```js
-ctx.webServer.listen(async (request) => {
-  if (request.path === "/api/now-playing") {
-    const snapshot = await ctx.nowPlaying.getSnapshot();
-    return {
-      headers: { "content-type": "application/json; charset=utf-8" },
-      body: {
-        title: snapshot.playback?.title || "",
-        artist: snapshot.playback?.artist || "",
-        lyric: snapshot.lyric?.lines?.[snapshot.lyric.currentIndex]?.text || "",
-      },
-    };
-  }
-
-  return {
-    status: 404,
-    body: "Not Found",
-  };
-});
-```
-
-给 Wallpaper Engine 做歌词/状态页面时，可以直接返回 HTML，并让页面用同源接口轮询：
+最小 WebSocket 示例：
 
 ```js
 export async function activate(ctx) {
-  const html = `<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <style>
-      body {
-        margin: 0;
-        height: 100vh;
-        display: grid;
-        place-items: center;
-        background: transparent;
-        color: white;
-        font: 600 42px system-ui, sans-serif;
-        text-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
-      }
-      small {
-        display: block;
-        margin-top: 12px;
-        font-size: 18px;
-        opacity: 0.72;
-        text-align: center;
-      }
-    </style>
-  </head>
-  <body>
-    <main>
-      <div id="lyric">EchoMusic</div>
-      <small id="track"></small>
-    </main>
-    <script>
-      async function tick() {
-        const data = await fetch("/api/now-playing").then((r) => r.json());
-        document.getElementById("lyric").textContent = data.lyric || data.title || "EchoMusic";
-        document.getElementById("track").textContent = [data.title, data.artist].filter(Boolean).join(" - ");
-      }
-      tick();
-      setInterval(tick, 1000);
-    </script>
-  </body>
-</html>`;
-
-  const result = await ctx.webServer.listen(async (request) => {
-    if (request.path === "/api/now-playing") {
-      const snapshot = await ctx.nowPlaying.getSnapshot();
-      return {
-        headers: { "content-type": "application/json; charset=utf-8" },
-        body: {
-          title: snapshot.playback?.title || "",
-          artist: snapshot.playback?.artist || "",
-          lyric: snapshot.lyric?.lines?.[snapshot.lyric.currentIndex]?.text || "",
-        },
-      };
-    }
-
-    return {
-      headers: { "content-type": "text/html; charset=utf-8" },
-      body: html,
-    };
+  const result = await ctx.webServer.listen({
+    path: "/live",
+    onConnection(socket) {
+      socket.onMessage(({ data }) => {
+        void socket.send(data);
+      });
+    },
   });
-
-  if (result.ok) ctx.toast.success(`Wallpaper 页面：${result.url}`);
+  if (!result.ok) return;
 }
 ```
 
-生命周期与限制：
-
-- 服务只监听 `127.0.0.1`，不会暴露到局域网；`host: "localhost"` 也会归一化为 `127.0.0.1`。
-- 同一插件同一时间只有一个服务；再次 `listen()` 会替换请求处理器，必要时重启端口。
-- 插件禁用、卸载、安全模式、运行上下文销毁或 EchoMusic 退出时会自动关闭服务；也可手动调用 `ctx.webServer.close()`。
-- `ctx.webServer.status()` 可查看当前服务是否运行、端口和未完成请求数。
-- 单次请求体最大 2 MB，单次响应体最大 8 MB，请求处理超时约 15 秒。
-- `handler` 抛错时宿主会记录插件运行异常并返回 500，不会拖垮播放器主流程。
-- `ctx.webServer` 也会出现在插件浮窗上下文中，适合由浮窗里的开关控制服务启停。
+服务只监听 `127.0.0.1`。同一插件同一时间只有一个 HTTP 服务；WebSocket 处理器可按 `path` 分别注册。插件停用或 EchoMusic 退出时会自动关闭。
 
 ### 注册应用内快捷键
 

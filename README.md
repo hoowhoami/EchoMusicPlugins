@@ -20,6 +20,8 @@ https://github.com/hoowhoami/EchoMusicPlugins
 - [任务中心 API](docs/tasks.md)：后台任务、进度、中止信号与终态保留策略。
 - [备份与恢复 API](docs/backups.md)：命令式备份操作、存储提供方注册与 WebDAV 示例。
 - [Graphics 绘图 API](/docs/graphics.md)：为插件提供绘图能力。
+- [本地 Web 服务与 WebSocket](docs/web-server.md)：本机 HTTP 页面/接口，以及同一端口上的 WebSocket。
+- [TCP 网络 API](docs/tcp.md)：主进程 TCP 连接、AbortSignal、半关闭与 keepalive。
 - [`openrgb`](openrgb)：独立的 OpenRGB 音乐灯效，支持频谱铺展、音量律动与低频节拍。
 - [`mv-enhancer`](mv-enhancer)：上下排列多个完整 MV 详情，并集中选择默认视频编码与分辨率。
 - [`playback-control-order`](playback-control-order)：统一管理侧边栏、首页播放栏和播放器页控制栏的显示、隐藏与排序。
