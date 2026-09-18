@@ -49,6 +49,9 @@ EchoMusic 插件可以声明独立的受控浮窗，用于桌面悬浮歌词、�
 
 | 字段 | 说明 |
 | --- | --- |
+| `defaultWidth` / `defaultHeight` | 首次显示尺寸，默认 `420 × 72` |
+| `minWidth` / `minHeight` | 宿主下限均为 `1`。未声明时落到该下限 |
+| `maxWidth` / `maxHeight` | 宿主不做实用尺寸上限；实际大小仍受当前显示器范围约束 |
 | `transparent` | 是否创建透明背景窗口，默认 `true` |
 | `alwaysOnTop` | 是否默认置顶，默认 `true` |
 | `skipTaskbar` | 是否隐藏任务栏/Dock 窗口入口，默认 `true` |
@@ -56,6 +59,8 @@ EchoMusic 插件可以声明独立的受控浮窗，用于桌面悬浮歌词、�
 | `rememberBounds` | 是否记住窗口位置和大小，默认 `true` |
 | `acceptFirstMouse` | macOS 下首次点击是否直接交给窗口内容 |
 | `allowOutsideWorkArea` | 是否允许使用完整显示器范围，开启后可贴近或覆盖 Windows 任务栏区域 |
+
+`minWidth` / `minHeight` 均可为 `1`，适合任务栏单行歌词这类需要窗口高度贴合字体和任务栏的场景。`show()` / `move()` / `resize.bind()` 的最终尺寸仍会夹到 Manifest 的 `min*`–`max*` 与当前显示器范围之内，宿主不再额外施加 1400×900 这类实用上限。需要覆盖任务栏时同时打开 `allowOutsideWorkArea`。需要此尺寸下限的插件应通过 `requires.echoMusicVersion` 约束到包含该改动的主程序版本。
 
 ## 主插件入口
 

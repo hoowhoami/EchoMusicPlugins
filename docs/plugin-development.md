@@ -224,7 +224,7 @@ pnpm exec electron . --safe-mode
 
 `requires.echoMusicVersion` 可选，表示插件要求的 EchoMusic 主程序版本范围，使用 semver range。常见写法是 `>=2.2.6`；如果插件明确不支持下一个大版本，也可以写 `>=2.2.6 <3`。如果只写 `2.2.6`，EchoMusic 会按 `>=2.2.6` 处理。版本范围写错会被标记为 manifest 无效；范围有效但当前主程序不满足时，插件管理页会提示“版本不兼容”并阻止启用。
 
-`contributes.windows` 可选，用于声明由主进程创建的插件独立浮窗，详见 [独立浮窗与 Now Playing](floating-windows.md)。窗口清单支持 `transparent`、`alwaysOnTop`、`skipTaskbar`、`rememberBounds` 等显示参数；`allowOutsideWorkArea: true` 可允许透明浮窗使用完整显示器范围，适合需要贴近或覆盖 Windows 任务栏区域的歌词/工具条插件。窗口入口中的 `ctx.window.setAlwaysOnTop(alwaysOnTop)` 可用于实现浮窗内的图钉按钮；macOS 下宿主会在需要时重建窗口以切换 `panel` / `toolbar` 类型。
+`contributes.windows` 可选，用于声明由主进程创建的插件独立浮窗，详见 [独立浮窗与 Now Playing](floating-windows.md)。窗口清单支持 `transparent`、`alwaysOnTop`、`skipTaskbar`、`rememberBounds` 等显示参数；`allowOutsideWorkArea: true` 可允许透明浮窗使用完整显示器范围，适合需要贴近或覆盖 Windows 任务栏区域的歌词/工具条插件。宿主对窗口宽高的下限均为 `1`，不再施加 1400×900 这类实用上限（实际大小仍受当前显示器约束）；任务栏单行歌词可以把 `minHeight` 设到 `1` 以贴合字体和任务栏高度。窗口入口中的 `ctx.window.setAlwaysOnTop(alwaysOnTop)` 可用于实现浮窗内的图钉按钮；macOS 下宿主会在需要时重建窗口以切换 `panel` / `toolbar` 类型。
 
 ## 最小插件
 
