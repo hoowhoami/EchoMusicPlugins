@@ -15,6 +15,8 @@ const api = await import(
     ).toString("base64"),
 );
 
+const source = await readFile(new URL("../playback-control-order/index.js", import.meta.url), "utf8");
+
 test("playback control order keeps each movable control once and fills missing controls", () => {
   const layout = api.normalizeLayout(
     {
@@ -94,4 +96,9 @@ test("playlist category visibility is independent from fixed playlist item visib
 
 test("playback control order does not impose a host version gate", () => {
   assert.equal(manifest.requires, undefined);
+});
+
+test("playback control order does not observe the whole player subtree", () => {
+  assert.doesNotMatch(source, /page\.observer\s*=\s*new MutationObserver/);
+  assert.doesNotMatch(source, /page\.observer\?\.observe\(page\.root/);
 });

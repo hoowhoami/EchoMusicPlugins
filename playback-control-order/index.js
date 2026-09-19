@@ -138,6 +138,13 @@ const asRecord = (value) =>
 const asBoolean = (value, fallback) => (typeof value === "boolean" ? value : fallback);
 const unique = (values) => [...new Set(values)];
 
+const requestFrame = (callback) => {
+  if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+    return window.requestAnimationFrame(callback);
+  }
+  return setTimeout(callback, 16);
+};
+
 // ctx.dom.observe 是新宿主提供的便利封装；旧宿主缺少时，用文档级观察器保留基础兼容性。
 const observeSelectorFallback = (selector, onMatch) => {
   if (typeof document === "undefined" || typeof MutationObserver === "undefined") return () => {};
@@ -339,6 +346,12 @@ const sameChildren = (parent, children) => {
 
 const reconcileChildren = (parent, children) => {
   if (!parent || sameChildren(parent, children)) return;
+  const fragment = parent.ownerDocument?.createDocumentFragment?.();
+  if (fragment) {
+    for (const child of children) fragment.append(child);
+    parent.append(fragment);
+    return;
+  }
   for (const child of children) parent.append(child);
 };
 
@@ -442,8 +455,8 @@ const applyPageLayout = (page) => {
     target.classList.add("echo-control-order-container");
     const fixedChildren = [...target.children].filter((child) => !movableNodes.has(child));
     const movableChildren = layout[zone].map((id) => discovered.movable.get(id)).filter(Boolean);
-    reconcileChildren(target, [...fixedChildren, ...movableChildren]);
     for (const id of layout[zone]) decorateControl(discovered.movable.get(id), id, zone, hidden.has(id));
+    reconcileChildren(target, [...fixedChildren, ...movableChildren]);
   }
 
   const center = discovered.containers.center;
@@ -460,19 +473,19 @@ const applyPageLayout = (page) => {
     ...[discovered.fixed.previous, discovered.fixed.play, discovered.fixed.next].filter(Boolean),
     ...layout.after.map((id) => discovered.movable.get(id)).filter(Boolean),
   ];
-  reconcileChildren(center, centerChildren);
   for (const id of layout.before) decorateControl(discovered.movable.get(id), id, "before", hidden.has(id));
   for (const id of layout.after) decorateControl(discovered.movable.get(id), id, "after", hidden.has(id));
   decorateControl(discovered.fixed.previous, "previous", "before", false, true);
   decorateControl(discovered.fixed.play, "play", "after", false, true);
   decorateControl(discovered.fixed.next, "next", "after", false, true);
+  reconcileChildren(center, centerChildren);
 };
 
 const schedulePageApply = (page) => {
   if (!page || page.disposed || page.timer) return;
   const token = {};
   page.timer = token;
-  queueMicrotask(() => {
+  requestFrame(() => {
     if (page.timer !== token) return;
     page.timer = null;
     if (!page.disposed) applyPageLayout(page);
@@ -670,7 +683,6 @@ const observePage = (pageId, root) => {
     originalChildren: [],
     originalParents: new Map(),
     nodeIds: new Map(),
-    observer: null,
   };
   const discovered = identifyActionNodes(pageId, root);
   page.discovered = discovered;
@@ -678,12 +690,9 @@ const observePage = (pageId, root) => {
   page.originalChildren = captureOriginalChildren(discovered);
   for (const node of discovered.movable.values()) page.originalParents.set(node, node.parentElement);
   pages.add(page);
-  page.observer = new MutationObserver(() => schedulePageApply(page));
-  page.observer.observe(root, { childList: true, subtree: true });
   schedulePageApply(page);
   return () => {
     page.disposed = true;
-    page.observer?.disconnect();
     restorePage(page);
     pages.delete(page);
   };
@@ -1094,7 +1103,6 @@ export async function activate(ctx) {
 export function deactivate() {
   for (const page of pages) {
     page.disposed = true;
-    page.observer?.disconnect();
     restorePage(page);
   }
   pages.clear();
