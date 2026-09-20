@@ -11,6 +11,7 @@ export const CONTROL_LABELS = Object.freeze({
   volume: "音量",
   speed: "倍速播放",
   share: "分享",
+  skin: "换肤",
   quality: "音质",
   effect: "歌曲音效",
   desktopLyric: "桌面歌词",
@@ -67,7 +68,7 @@ const DEFAULT_PAGE_LAYOUT = {
     left: ["favorite", "add", "comments", "barrage"],
     before: ["sleepTimer", "playMode"],
     after: ["volume", "speed"],
-    right: ["share", "quality", "effect", "desktopLyric", "queue"],
+    right: ["skin", "share", "quality", "effect", "desktopLyric", "queue"],
     hidden: [],
   },
 };
@@ -112,6 +113,7 @@ const PAGE_CONTROL_IDS = {
     "playMode",
     "volume",
     "speed",
+    "skin",
     "share",
     "quality",
     "effect",
@@ -294,6 +296,7 @@ const classifyNode = (pageId, node, center) => {
     return "comments";
   if (pageId === "home" && elementHasLabel(node, (value) => value === "播放 MV")) return "mv";
   if (elementHasLabel(node, (value) => value === "分享")) return "share";
+  if (pageId === "player" && elementHasLabel(node, (value) => value === "换肤")) return "skin";
   if (
     elementHasLabel(node, (value) =>
       value === "音质" || value.startsWith("当前使用") || value.startsWith("正在切换至"),
@@ -720,6 +723,7 @@ const FALLBACK_ICONS = Object.freeze({
   barrage: "▤",
   sleepTimer: "◷",
   playMode: "↻",
+  skin: "◉",
   volume: "◖",
   speed: "◔",
   share: "⌯",
@@ -732,6 +736,11 @@ const FALLBACK_ICONS = Object.freeze({
   next: "▶|",
 });
 
+const FALLBACK_SVG_ICONS = Object.freeze({
+  // EchoMusic beta.5 的“换肤”按钮使用 inputBehaviorGuard 的同一枚图标。
+  skin: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m15 4l6 2v5h-3v8a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-8H3V6l6-2a3 3 0 0 0 6 0"/></svg>',
+});
+
 const iconSvgFor = (node) => {
   const svg = node?.matches?.("svg") ? node : node?.querySelector?.("svg");
   return svg?.outerHTML || "";
@@ -739,12 +748,18 @@ const iconSvgFor = (node) => {
 
 const controlIconMarkup = (id, pageId) => {
   if (typeof document !== "undefined") {
-    const root = document.querySelector(pageId === "home" ? ".player-bar" : ".lyric-bar");
-    const action = root && identifyActionNodes(pageId, root);
-    const node = action?.movable.get(id) || action?.fixed?.[id];
-    const actual = iconSvgFor(node);
-    if (actual) return actual;
+    const selectors = pageId === "home" ? [".player-bar"] : [".lyric-bar", ".player-bar"];
+    for (const selector of selectors) {
+      const root = document.querySelector(selector);
+      if (!root) continue;
+      const sourcePageId = root.matches?.(".lyric-bar") ? "player" : "home";
+      const action = identifyActionNodes(sourcePageId, root);
+      const node = action?.movable.get(id) || action?.fixed?.[id];
+      const actual = iconSvgFor(node);
+      if (actual) return actual;
+    }
   }
+  if (FALLBACK_SVG_ICONS[id]) return FALLBACK_SVG_ICONS[id];
   return `<span class="echo-control-order-fallback-icon">${FALLBACK_ICONS[id] || "•"}</span>`;
 };
 
@@ -782,26 +797,37 @@ const SETTINGS_CSS = `
 .echo-control-order-settings .echo-control-order-sidebar-state { margin-left: auto; color: color-mix(in srgb, var(--color-text-main) 48%, transparent); font-size: 10px; }
 .echo-control-order-settings .echo-control-order-page { display: grid; gap: 10px; }
 .echo-control-order-settings .echo-control-order-page-title { color: var(--color-text-main); font-size: 13px; font-weight: 850; }
-.echo-control-order-settings .echo-control-order-control-preview { display: grid; grid-template-columns: minmax(180px, .8fr) minmax(320px, 1.4fr) minmax(330px, 1.5fr); gap: 8px; align-items: stretch; overflow-x: auto; }
-.echo-control-order-settings .echo-control-order-column { display: grid; align-content: start; gap: 7px; min-width: 0; padding: 9px; border: 1px dashed var(--control-border); border-radius: 12px; background: color-mix(in srgb, var(--color-bg-elevated) 58%, transparent); }
+.plugin-settings-dialog:has(.echo-control-order-settings) { left: var(--echo-settings-left, 2vw) !important; top: var(--echo-settings-top, 3vh) !important; right: auto !important; bottom: auto !important; width: var(--echo-settings-width, 96vw) !important; max-width: none !important; height: var(--echo-settings-height, 94vh) !important; max-height: none !important; margin: 0 !important; transform: none !important; box-sizing: border-box !important; }
+.plugin-settings-dialog:has(.echo-control-order-settings) .plugin-settings-dialog-body { box-sizing: border-box !important; height: auto !important; max-height: none !important; overflow-y: auto !important; padding: 18px 22px 26px !important; }
+.plugin-settings-dialog:has(.echo-control-order-settings) .plugin-settings-content.is-custom { min-height: 100%; }
+.echo-control-order-settings .echo-control-order-control-preview { min-width: 0; overflow: hidden; padding-bottom: 4px; }
+.echo-control-order-settings .echo-control-order-track { display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr) minmax(0, max-content); width: 100%; min-width: 0; gap: 8px; align-items: stretch; }
+.echo-control-order-settings .echo-control-order-column { display: grid; align-content: start; gap: 7px; min-width: 0; padding: 9px; border: 1px dashed var(--control-border); border-radius: 12px; background: color-mix(in srgb, var(--color-bg-elevated) 58%, transparent); overflow: hidden; }
+.echo-control-order-settings .echo-control-order-column-left,
+.echo-control-order-settings .echo-control-order-column-center,
+.echo-control-order-settings .echo-control-order-column-right { min-width: 0; }
 .echo-control-order-settings .echo-control-order-column-title { color: color-mix(in srgb, var(--color-text-main) 72%, transparent); font-size: 10px; font-weight: 850; }
-.echo-control-order-settings .echo-control-order-zone { display: flex; flex-wrap: wrap; align-items: center; align-content: start; gap: 5px; min-height: 54px; padding: 6px; border-radius: 9px; background: color-mix(in srgb, var(--color-text-main) 4%, transparent); }
-.echo-control-order-settings .echo-control-order-zone-right { flex-wrap: nowrap; min-width: 330px; overflow-x: auto; }
-.echo-control-order-settings .echo-control-order-zone-right .echo-control-order-item { flex: 0 0 62px; }
-.echo-control-order-settings .echo-control-order-zone-title { width: 100%; color: color-mix(in srgb, var(--color-text-main) 50%, transparent); font-size: 9px; }
+.echo-control-order-settings .echo-control-order-center-track { display: grid; grid-template-columns: minmax(0, max-content) auto minmax(0, max-content); align-items: stretch; justify-content: center; gap: 4px; width: 100%; min-width: 0; }
+.echo-control-order-settings .echo-control-order-zone { position: relative; display: flex; flex: 0 1 auto; flex-wrap: nowrap; align-items: flex-end; box-sizing: border-box; gap: 3px; width: auto; max-width: 100%; min-width: 0; height: 76px; min-height: 76px; padding: 20px 5px 4px; border-radius: 9px; background: color-mix(in srgb, var(--color-text-main) 4%, transparent); overflow: hidden; }
+.echo-control-order-settings .echo-control-order-zone-before,
+.echo-control-order-settings .echo-control-order-zone-after { min-width: 0; }
+.echo-control-order-settings .echo-control-order-zone-right { min-width: 0; overflow: hidden; }
+.echo-control-order-settings .echo-control-order-zone-right .echo-control-order-item { flex: 1 1 0; max-width: 48px; }
+.echo-control-order-settings .echo-control-order-zone-title { position: absolute; top: 4px; left: 5px; width: auto; color: color-mix(in srgb, var(--color-text-main) 50%, transparent); font-size: 9px; white-space: nowrap; }
 .echo-control-order-settings .echo-control-order-item,
 .echo-control-order-settings .echo-control-order-fixed { display: grid; place-items: center; gap: 2px; box-sizing: border-box; border: 1px solid var(--border-subtle); border-radius: 9px; color: var(--color-primary-text); background: var(--color-bg-elevated); cursor: grab; text-align: center; }
-.echo-control-order-settings .echo-control-order-item { width: 62px; min-height: 55px; padding: 5px 3px; }
-.echo-control-order-settings .echo-control-order-item.is-small { width: 50px; min-height: 48px; }
+.echo-control-order-settings .echo-control-order-item { width: 48px; min-width: 0; min-height: 52px; max-width: 48px; padding: 4px 2px; flex: 0 1 48px; }
+.echo-control-order-settings .echo-control-order-zone-left .echo-control-order-item { width: 42px; max-width: 42px; flex-basis: 42px; }
+.echo-control-order-settings .echo-control-order-item.is-small { width: 42px; min-height: 46px; max-width: 42px; flex-basis: 42px; }
 .echo-control-order-settings .echo-control-order-item.is-disabled { opacity: .25; filter: grayscale(1); }
 .echo-control-order-settings .echo-control-order-item .echo-control-order-icon,
 .echo-control-order-settings .echo-control-order-fixed .echo-control-order-icon { width: 24px; height: 24px; display: grid; place-items: center; }
 .echo-control-order-settings .echo-control-order-icon svg { width: 21px; height: 21px; }
 .echo-control-order-settings .echo-control-order-item-label { max-width: 100%; overflow: hidden; color: color-mix(in srgb, var(--color-text-main) 70%, transparent); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
-.echo-control-order-settings .echo-control-order-center { display: grid; gap: 7px; min-width: 0; padding: 9px; border: 1px solid var(--border-subtle); border-radius: 12px; background: color-mix(in srgb, var(--color-bg-elevated) 58%, transparent); }
-.echo-control-order-settings .echo-control-order-center .echo-control-order-zone { background: color-mix(in srgb, var(--color-primary) 5%, transparent); }
-.echo-control-order-settings .echo-control-order-fixed-strip { display: flex; align-items: center; justify-content: center; gap: 5px; padding: 6px; border: 1px solid color-mix(in srgb, var(--color-primary) 28%, var(--border-subtle)); border-radius: 9px; background: color-mix(in srgb, var(--color-primary) 8%, transparent); }
-.echo-control-order-settings .echo-control-order-fixed { width: 62px; min-height: 55px; padding: 5px 3px; opacity: .68; cursor: not-allowed; }
+.echo-control-order-settings .echo-control-order-column-center { border-style: solid; border-color: var(--border-subtle); }
+.echo-control-order-settings .echo-control-order-column-center .echo-control-order-zone { background: color-mix(in srgb, var(--color-primary) 5%, transparent); }
+.echo-control-order-settings .echo-control-order-fixed-strip { display: flex; flex: 0 0 auto; align-items: flex-end; justify-content: center; box-sizing: border-box; width: max-content; height: 76px; gap: 3px; padding: 20px 5px 4px; border: 1px solid color-mix(in srgb, var(--color-primary) 28%, var(--border-subtle)); border-radius: 9px; background: color-mix(in srgb, var(--color-primary) 8%, transparent); }
+.echo-control-order-settings .echo-control-order-fixed { width: 48px; min-width: 0; min-height: 52px; max-width: none; padding: 4px 2px; opacity: .68; cursor: not-allowed; flex: 0 1 48px; }
 .echo-control-order-settings .echo-control-order-fixed-lock { color: color-mix(in srgb, var(--color-text-main) 42%, transparent); font-size: 9px; }
 .echo-control-order-settings .echo-control-order-fallback-icon { display: grid; place-items: center; width: 100%; height: 100%; font-size: 18px; line-height: 1; }
 .echo-control-order-settings .echo-control-order-reset { justify-self: start; padding: 7px 11px; border-radius: 9px; color: var(--color-text-main); background: var(--color-bg-elevated); font-size: 11px; font-weight: 750; }
@@ -820,13 +846,17 @@ const SETTINGS_CSS = `
 .echo-control-order-container { gap: 4px !important; }
 .echo-control-order-container { flex-wrap: nowrap !important; white-space: nowrap !important; }
 .player-actions.echo-control-order-container,
-.bar-right.echo-control-order-container { min-width: 216px !important; max-width: none !important; overflow: visible !important; }
+.bar-right.echo-control-order-container,
+.bar-song-actions.echo-control-order-container { min-width: 0 !important; max-width: 320px !important; overflow: visible !important; }
+.player-actions.echo-control-order-container,
+.bar-right.echo-control-order-container { justify-content: flex-end !important; }
+.bar-right.echo-control-order-container { justify-self: end !important; }
+.bar-song-actions.echo-control-order-container { justify-content: flex-start !important; }
 .echo-control-order-hidden { display: none !important; }
 .echo-control-order-fixed-slot { cursor: default !important; }
-@media (max-width: 720px) { .echo-control-order-settings .echo-control-order-control-preview { grid-template-columns: 1fr; } }
-@container echo-control-order-settings (max-width: 760px) {
-  .echo-control-order-settings .echo-control-order-control-preview { grid-template-columns: 1fr; overflow-x: visible; }
-  .echo-control-order-settings .echo-control-order-zone-right { min-width: 0; overflow-x: visible; }
+@media (max-width: 720px) {
+  .plugin-settings-dialog:has(.echo-control-order-settings) { width: 98vw !important; max-width: 98vw !important; }
+  .echo-control-order-settings .echo-control-order-track { grid-template-columns: minmax(0, max-content) minmax(0, 1fr) minmax(0, max-content); }
 }
 `;
 
@@ -834,11 +864,56 @@ let runtimeCtx = null;
 let state = null;
 let styleDispose = null;
 let settingsDispose = null;
+let settingsDialogBoundsDispose = null;
 let routeDispose = null;
 let sidebarObserveDispose = null;
 let pageObserveDisposes = [];
 const pages = new Set();
 const sidebarRecords = new Set();
+
+const observeSettingsDialogBounds = () => {
+  if (typeof document === "undefined") return () => {};
+  let frame = 0;
+  let observedMainContent = null;
+  let resizeObserver = null;
+  const sync = () => {
+    frame = 0;
+    const dialog = document.querySelector(".plugin-settings-dialog");
+    const settings = dialog?.querySelector(".echo-control-order-settings");
+    const mainContent = document.querySelector(".main-content");
+    if (!dialog || !settings || !mainContent) return;
+    if (resizeObserver && observedMainContent !== mainContent) {
+      if (observedMainContent) resizeObserver.unobserve(observedMainContent);
+      resizeObserver.observe(mainContent);
+      observedMainContent = mainContent;
+    }
+    const rect = mainContent.getBoundingClientRect();
+    const width = Math.max(0, rect.width);
+    const height = Math.max(0, rect.height);
+    dialog.style.setProperty("--echo-settings-left", `${Math.max(0, rect.left)}px`);
+    dialog.style.setProperty("--echo-settings-top", `${Math.max(0, rect.top)}px`);
+    dialog.style.setProperty("--echo-settings-width", `${width}px`);
+    dialog.style.setProperty("--echo-settings-height", `${height}px`);
+  };
+  const schedule = () => {
+    if (frame) return;
+    frame = typeof requestAnimationFrame === "function" ? requestAnimationFrame(sync) : setTimeout(sync, 0);
+  };
+  resizeObserver = typeof ResizeObserver === "function" ? new ResizeObserver(schedule) : null;
+  const mutationObserver = typeof MutationObserver === "function" ? new MutationObserver(schedule) : null;
+  mutationObserver?.observe(document.body, { childList: true, subtree: true });
+  window.addEventListener("resize", schedule);
+  schedule();
+  return () => {
+    if (frame) {
+      if (typeof cancelAnimationFrame === "function") cancelAnimationFrame(frame);
+      else clearTimeout(frame);
+    }
+    resizeObserver?.disconnect();
+    mutationObserver?.disconnect();
+    window.removeEventListener("resize", schedule);
+  };
+};
 
 const createSettingsComponent = (ctx) => {
   const { defineComponent, h, reactive } = ctx.vue;
@@ -994,7 +1069,7 @@ const createSettingsComponent = (ctx) => {
         h(
           "div",
           {
-            class: ["echo-control-order-zone", zone === "right" ? "echo-control-order-zone-right" : ""],
+            class: ["echo-control-order-zone", `echo-control-order-zone-${zone}`, zone === "right" ? "echo-control-order-zone-right" : ""],
             onDragover: (event) => event.preventDefault(),
             onDrop: (event) => dropControl(pageId, zone, draft[pageId][zone].length, event),
           },
@@ -1003,6 +1078,13 @@ const createSettingsComponent = (ctx) => {
             ...draft[pageId][zone].map((id, index) => renderControlItem(pageId, zone, id, index)),
           ],
         );
+
+      const controlLayout = (pageId) => {
+        return {
+          track: "minmax(0, max-content) minmax(0, 1fr) minmax(0, max-content)",
+          center: "minmax(0, max-content) auto minmax(0, max-content)",
+        };
+      };
 
       const renderFixed = (pageId, id) =>
         h("div", { class: "echo-control-order-fixed", key: `${pageId}-fixed-${id}` }, [
@@ -1016,23 +1098,27 @@ const createSettingsComponent = (ctx) => {
           h("div", { class: "echo-control-order-page-title" }, pageId === "home" ? "首页播放控件" : "播放器页控件"),
           h("div", { class: "echo-control-order-hint" }, "点击图标切换显示状态：亮色为启用，虚影为停用；拖动图标可在左、中、右区域内排序。"),
           h("div", { class: "echo-control-order-control-preview" }, [
-            h("div", { class: "echo-control-order-column" }, [
-              h("div", { class: "echo-control-order-column-title" }, "左区"),
-              renderZone(pageId, "left"),
-            ]),
-            h("div", { class: "echo-control-order-center" }, [
-              h("div", { class: "echo-control-order-column-title" }, "中区"),
-              renderZone(pageId, "before"),
-              h("div", { class: "echo-control-order-fixed-strip" }, [
-                renderFixed(pageId, "previous"),
-                renderFixed(pageId, "play"),
-                renderFixed(pageId, "next"),
+            h("div", { class: "echo-control-order-track", style: { gridTemplateColumns: controlLayout(pageId).track } }, [
+              h("div", { class: "echo-control-order-column echo-control-order-column-left" }, [
+                h("div", { class: "echo-control-order-column-title" }, "左区"),
+                renderZone(pageId, "left"),
               ]),
-              renderZone(pageId, "after"),
-            ]),
-            h("div", { class: "echo-control-order-column" }, [
-              h("div", { class: "echo-control-order-column-title" }, "右区"),
-              renderZone(pageId, "right"),
+              h("div", { class: "echo-control-order-column echo-control-order-column-center" }, [
+                h("div", { class: "echo-control-order-column-title" }, "中区"),
+                h("div", { class: "echo-control-order-center-track", style: { gridTemplateColumns: controlLayout(pageId).center } }, [
+                  renderZone(pageId, "before"),
+                  h("div", { class: "echo-control-order-fixed-strip" }, [
+                    renderFixed(pageId, "previous"),
+                    renderFixed(pageId, "play"),
+                    renderFixed(pageId, "next"),
+                  ]),
+                  renderZone(pageId, "after"),
+                ]),
+              ]),
+              h("div", { class: "echo-control-order-column echo-control-order-column-right" }, [
+                h("div", { class: "echo-control-order-column-title" }, "右区"),
+                renderZone(pageId, "right"),
+              ]),
             ]),
           ]),
         ]);
@@ -1078,6 +1164,7 @@ export async function activate(ctx) {
     typeof ctx?.css?.inject === "function"
       ? ctx.css.inject(SETTINGS_CSS, { id: "playback-control-order" })
       : null;
+  settingsDialogBoundsDispose = observeSettingsDialogBounds();
   if (
     typeof ctx?.ui?.settings?.define === "function" &&
     typeof ctx?.vue?.defineComponent === "function" &&
@@ -1117,10 +1204,12 @@ export function deactivate() {
   sidebarObserveDispose?.();
   routeDispose?.();
   settingsDispose?.();
+  settingsDialogBoundsDispose?.();
   styleDispose?.();
   sidebarObserveDispose = null;
   routeDispose = null;
   settingsDispose = null;
+  settingsDialogBoundsDispose = null;
   styleDispose = null;
   runtimeCtx = null;
   state = null;

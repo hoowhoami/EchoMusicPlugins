@@ -94,8 +94,14 @@ test("playlist category visibility is independent from fixed playlist item visib
   assert.deepEqual(categoryHidden.sidebar.playlists.hidden, []);
 });
 
-test("playback control order does not impose a host version gate", () => {
-  assert.equal(manifest.requires, undefined);
+test("playback control order requires the beta.4 plugin host", () => {
+  assert.equal(manifest.requires.echoMusicVersion, ">=2.3.2-beta.4");
+});
+
+test("player defaults include the beta.5 skin control", () => {
+  const settings = api.normalizeSettings({});
+
+  assert.equal(settings.player.right[0], "skin");
 });
 
 test("playback control order does not observe the whole player subtree", () => {
