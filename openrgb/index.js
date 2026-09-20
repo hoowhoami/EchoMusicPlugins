@@ -15,7 +15,7 @@ export const DEFAULT_SETTINGS = {
   selected: [],
   effect: "spectrum",
   palette: "aurora",
-  brightness: 100,
+  brightness: 50,
   gain: 2,
   smoothing: 65,
   fps: 20,
@@ -43,7 +43,7 @@ export function normalizeSettings(value = {}) {
     palette: ["aurora", "ember", "ice"].includes(s.palette)
       ? s.palette
       : "aurora",
-    brightness: clamp(s.brightness ?? 100, 0, 100),
+    brightness: clamp(s.brightness ?? 50, 0, 100),
     gain: clamp(s.gain ?? 2, 0.5, 5),
     smoothing: clamp(s.smoothing ?? 65, 0, 95),
     fps: Math.round(clamp(s.fps ?? 20, 5, 30)),
@@ -438,18 +438,14 @@ export function renderColors(
     levels[led] = playing
       ? old + (target - old) * (1 - Math.exp(-clamp(dt, 1, 500) / tau))
       : 0;
-    // Keyboard LEDs have a much narrower perceived range than the on-screen
-    // preview.  Apply a light perceptual lift before the user brightness
-    // control so quiet music remains visible without clipping peaks.
-    const visualLevel = Math.sqrt(levels[led]),
-      colors = palettes[settings.palette],
+    const colors = palettes[settings.palette],
       p = x * 2,
       a = Math.min(1, Math.floor(p)),
       f = p - a;
     for (let channel = 0; channel < 3; channel++)
       rgb[led * 3 + channel] = Math.round(
         ((colors[a][channel] * (1 - f) + colors[a + 1][channel] * f) *
-          visualLevel *
+          levels[led] *
           settings.brightness) /
           100,
       );
