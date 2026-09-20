@@ -15,6 +15,8 @@ const api = await import(
     ).toString("base64"),
 );
 
+const source = await readFile(new URL("../playback-control-order/index.js", import.meta.url), "utf8");
+
 test("playback control order keeps each movable control once and fills missing controls", () => {
   const layout = api.normalizeLayout(
     {
@@ -36,6 +38,16 @@ test("playback control order keeps each movable control once and fills missing c
     after: [],
     right: ["favorite"],
   });
+});
+
+test("playback control order moves items using the pre-removal drop index", () => {
+  const items = ["favorite", "add", "comments", "mv"];
+
+  api.moveItem(items, 0, 3);
+  assert.deepEqual(items, ["add", "comments", "favorite", "mv"]);
+
+  api.moveItem(items, 2, 1);
+  assert.deepEqual(items, ["add", "favorite", "comments", "mv"]);
 });
 
 test("playback control order normalizes settings independently for home and player", () => {
@@ -92,6 +104,42 @@ test("playlist category visibility is independent from fixed playlist item visib
   assert.deepEqual(categoryHidden.sidebar.playlists.hidden, []);
 });
 
-test("playback control order does not impose a host version gate", () => {
-  assert.equal(manifest.requires, undefined);
+test("playback control order requires the beta.4 plugin host", () => {
+  assert.equal(manifest.requires.echoMusicVersion, ">=2.3.2-beta.4");
+});
+
+test("player defaults include the beta.5 skin control", () => {
+  const settings = api.normalizeSettings({});
+
+  assert.equal(settings.player.right[0], "skin");
+});
+
+test("playback control order does not observe the whole player subtree", () => {
+  assert.doesNotMatch(source, /page\.observer\s*=\s*new MutationObserver/);
+  assert.doesNotMatch(source, /page\.observer\?\.observe\(page\.root/);
+});
+
+test("playback control order uses pointer capture for reliable drag gestures", () => {
+  assert.match(source, /setPointerCapture\?\.\(event\.pointerId\)/);
+  assert.match(source, /elementFromPoint\(event\.clientX, event\.clientY\)/);
+  assert.doesNotMatch(source, /draggable:\s*true/);
+});
+
+test("playback control order keeps empty zones droppable and aligns fixed controls with movable controls", () => {
+  assert.match(source, /echo-control-order-empty-slot/);
+  assert.match(source, /justify-content: center/);
+  assert.match(source, /echo-control-order-fixed-strip-title.*固定/);
+  assert.match(source, /echo-control-order-fixed.*grid-template-rows: 24px minmax\(0, 1fr\)/);
+  assert.doesNotMatch(source, /echo-control-order-fixed-lock/);
+});
+
+test("playback control order centers the drag ghost on the pointer", () => {
+  assert.match(source, /translate3d\(-50%, -50%, 0\)/);
+  assert.match(source, /ghost\.style\.left.*event\.clientX/);
+  assert.match(source, /ghost\.style\.top.*event\.clientY/);
+  assert.match(source, /pointer-events: none/);
+  assert.match(source, /echo-control-order-drag-layer/);
+  assert.match(source, /layer\.style\.position = "fixed"/);
+  assert.match(source, /createDragGhost/);
+  assert.match(source, /clearDragGhost/);
 });

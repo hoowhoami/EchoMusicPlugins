@@ -101,6 +101,7 @@
     {
       "id": "mv-enhancer",
       "path": "mv-enhancer",
+      "repo": "https://github.com/hoowhoami/EchoMusicPlugins",
       "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/mv-enhancer",
       "tags": [
         "mv",
@@ -111,6 +112,7 @@
     {
       "id": "playback-control-order",
       "path": "playback-control-order",
+      "repo": "https://github.com/hoowhoami/EchoMusicPlugins",
       "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/playback-control-order",
       "tags": [
         "player",
