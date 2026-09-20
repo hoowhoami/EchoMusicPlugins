@@ -206,6 +206,20 @@ export const normalizeLayout = (layout, fallback, availableIds) => {
   return result;
 };
 
+// targetIndex is measured against the list before the source item is removed.
+// Keeping this operation in one place avoids the common off-by-one error when
+// dropping an item after another item in the same zone.
+export const moveItem = (items, fromIndex, targetIndex) => {
+  if (!Array.isArray(items)) return items;
+  if (!Number.isInteger(fromIndex) || !Number.isInteger(targetIndex)) return items;
+  if (fromIndex < 0 || fromIndex >= items.length) return items;
+  const [item] = items.splice(fromIndex, 1);
+  if (item === undefined) return items;
+  const adjustedIndex = fromIndex < targetIndex ? targetIndex - 1 : targetIndex;
+  items.splice(Math.max(0, Math.min(adjustedIndex, items.length)), 0, item);
+  return items;
+};
+
 const normalizeHidden = (value, availableIds) => {
   const available = new Set(availableIds);
   return unique(Array.isArray(value) ? value.filter((id) => available.has(id)) : []);
@@ -800,14 +814,15 @@ const SETTINGS_CSS = `
 .plugin-settings-dialog:has(.echo-control-order-settings) { left: var(--echo-settings-left, 2vw) !important; top: var(--echo-settings-top, 3vh) !important; right: auto !important; bottom: auto !important; width: var(--echo-settings-width, 96vw) !important; max-width: none !important; height: var(--echo-settings-height, 94vh) !important; max-height: none !important; margin: 0 !important; transform: none !important; box-sizing: border-box !important; }
 .plugin-settings-dialog:has(.echo-control-order-settings) .plugin-settings-dialog-body { box-sizing: border-box !important; height: auto !important; max-height: none !important; overflow-y: auto !important; padding: 18px 22px 26px !important; }
 .plugin-settings-dialog:has(.echo-control-order-settings) .plugin-settings-content.is-custom { min-height: 100%; }
-.echo-control-order-settings .echo-control-order-control-preview { min-width: 0; overflow: hidden; padding-bottom: 4px; }
-.echo-control-order-settings .echo-control-order-track { display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr) minmax(0, max-content); width: 100%; min-width: 0; gap: 8px; align-items: stretch; }
+.echo-control-order-settings .echo-control-order-control-preview { min-width: 0; overflow-x: auto; overflow-y: hidden; padding-bottom: 4px; }
+.echo-control-order-settings .echo-control-order-track { display: grid; grid-template-columns: max-content max-content max-content; width: max-content; min-width: 100%; gap: 8px; align-items: stretch; justify-content: center; }
 .echo-control-order-settings .echo-control-order-column { display: grid; align-content: start; gap: 7px; min-width: 0; padding: 9px; border: 1px dashed var(--control-border); border-radius: 12px; background: color-mix(in srgb, var(--color-bg-elevated) 58%, transparent); overflow: hidden; }
 .echo-control-order-settings .echo-control-order-column-left,
 .echo-control-order-settings .echo-control-order-column-center,
-.echo-control-order-settings .echo-control-order-column-right { min-width: 0; }
+.echo-control-order-settings .echo-control-order-column-right { min-width: 0; width: max-content; max-width: 100%; }
+.echo-control-order-settings .echo-control-order-column-center { width: max-content; max-width: 100%; }
 .echo-control-order-settings .echo-control-order-column-title { color: color-mix(in srgb, var(--color-text-main) 72%, transparent); font-size: 10px; font-weight: 850; }
-.echo-control-order-settings .echo-control-order-center-track { display: grid; grid-template-columns: minmax(0, max-content) auto minmax(0, max-content); align-items: stretch; justify-content: center; gap: 4px; width: 100%; min-width: 0; }
+.echo-control-order-settings .echo-control-order-center-track { display: grid; grid-template-columns: max-content max-content max-content; align-items: stretch; justify-content: start; gap: 4px; width: max-content; max-width: 100%; min-width: 0; }
 .echo-control-order-settings .echo-control-order-zone { position: relative; display: flex; flex: 0 1 auto; flex-wrap: nowrap; align-items: flex-end; box-sizing: border-box; gap: 3px; width: auto; max-width: 100%; min-width: 0; height: 76px; min-height: 76px; padding: 20px 5px 4px; border-radius: 9px; background: color-mix(in srgb, var(--color-text-main) 4%, transparent); overflow: hidden; }
 .echo-control-order-settings .echo-control-order-zone-before,
 .echo-control-order-settings .echo-control-order-zone-after { min-width: 0; }
@@ -816,7 +831,7 @@ const SETTINGS_CSS = `
 .echo-control-order-settings .echo-control-order-zone-title { position: absolute; top: 4px; left: 5px; width: auto; color: color-mix(in srgb, var(--color-text-main) 50%, transparent); font-size: 9px; white-space: nowrap; }
 .echo-control-order-settings .echo-control-order-item,
 .echo-control-order-settings .echo-control-order-fixed { display: grid; place-items: center; gap: 2px; box-sizing: border-box; border: 1px solid var(--border-subtle); border-radius: 9px; color: var(--color-primary-text); background: var(--color-bg-elevated); cursor: grab; text-align: center; }
-.echo-control-order-settings .echo-control-order-item { width: 48px; min-width: 0; min-height: 52px; max-width: 48px; padding: 4px 2px; flex: 0 1 48px; }
+.echo-control-order-settings .echo-control-order-item { width: 48px; height: 52px; min-width: 0; min-height: 52px; max-width: 48px; padding: 4px 2px; flex: 0 1 48px; align-self: flex-end; grid-template-rows: 24px minmax(0, 1fr); touch-action: none; user-select: none; }
 .echo-control-order-settings .echo-control-order-zone-left .echo-control-order-item { width: 42px; max-width: 42px; flex-basis: 42px; }
 .echo-control-order-settings .echo-control-order-item.is-small { width: 42px; min-height: 46px; max-width: 42px; flex-basis: 42px; }
 .echo-control-order-settings .echo-control-order-item.is-disabled { opacity: .25; filter: grayscale(1); }
@@ -824,11 +839,22 @@ const SETTINGS_CSS = `
 .echo-control-order-settings .echo-control-order-fixed .echo-control-order-icon { width: 24px; height: 24px; display: grid; place-items: center; }
 .echo-control-order-settings .echo-control-order-icon svg { width: 21px; height: 21px; }
 .echo-control-order-settings .echo-control-order-item-label { max-width: 100%; overflow: hidden; color: color-mix(in srgb, var(--color-text-main) 70%, transparent); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.echo-control-order-settings .echo-control-order-empty-slot { width: 48px; height: 52px; min-width: 48px; flex: 0 0 48px; align-self: flex-end; box-sizing: border-box; border: 1px dashed color-mix(in srgb, var(--color-text-main) 22%, transparent); border-radius: 9px; background: color-mix(in srgb, var(--color-text-main) 2%, transparent); }
+.echo-control-order-settings .echo-control-order-zone-left .echo-control-order-empty-slot { width: 42px; min-width: 42px; flex-basis: 42px; }
 .echo-control-order-settings .echo-control-order-column-center { border-style: solid; border-color: var(--border-subtle); }
 .echo-control-order-settings .echo-control-order-column-center .echo-control-order-zone { background: color-mix(in srgb, var(--color-primary) 5%, transparent); }
-.echo-control-order-settings .echo-control-order-fixed-strip { display: flex; flex: 0 0 auto; align-items: flex-end; justify-content: center; box-sizing: border-box; width: max-content; height: 76px; gap: 3px; padding: 20px 5px 4px; border: 1px solid color-mix(in srgb, var(--color-primary) 28%, var(--border-subtle)); border-radius: 9px; background: color-mix(in srgb, var(--color-primary) 8%, transparent); }
-.echo-control-order-settings .echo-control-order-fixed { width: 48px; min-width: 0; min-height: 52px; max-width: none; padding: 4px 2px; opacity: .68; cursor: not-allowed; flex: 0 1 48px; }
-.echo-control-order-settings .echo-control-order-fixed-lock { color: color-mix(in srgb, var(--color-text-main) 42%, transparent); font-size: 9px; }
+.echo-control-order-settings .echo-control-order-fixed-strip { position: relative; display: flex; flex: 0 0 auto; align-items: flex-end; justify-content: center; box-sizing: border-box; width: max-content; height: 76px; gap: 3px; padding: 20px 5px 4px; border: 0 solid transparent; border-radius: 9px; background: color-mix(in srgb, var(--color-primary) 8%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 28%, var(--border-subtle)); }
+.echo-control-order-settings .echo-control-order-fixed-strip-title { position: absolute; top: 4px; left: 5px; color: color-mix(in srgb, var(--color-text-main) 50%, transparent); font-size: 9px; white-space: nowrap; }
+.echo-control-order-settings .echo-control-order-fixed { width: 48px; height: 52px; min-width: 0; min-height: 52px; max-height: 52px; max-width: none; padding: 4px 2px; opacity: .68; cursor: not-allowed; flex: 0 1 48px; align-self: flex-end; grid-template-rows: 24px minmax(0, 1fr); overflow: hidden; user-select: none; }
+.echo-control-order-settings .echo-control-order-item.is-dragging,
+.echo-control-order-settings .echo-control-order-sidebar-item.is-dragging { opacity: .45; cursor: grabbing; }
+.echo-control-order-drag-ghost { position: fixed; z-index: 2147483647; pointer-events: none !important; margin: 0 !important; opacity: .92 !important; transform: translate3d(-50%, -50%, 0) rotate(2deg); transform-origin: center; box-shadow: 0 8px 20px color-mix(in srgb, var(--color-text-main) 18%, transparent); cursor: grabbing !important; }
+.echo-control-order-drag-ghost * { pointer-events: none !important; }
+.echo-control-order-settings .echo-control-order-item.is-drag-target,
+.echo-control-order-settings .echo-control-order-sidebar-item.is-drag-target,
+.echo-control-order-settings .echo-control-order-zone.is-drag-target { border-color: var(--color-primary) !important; box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 35%, transparent); }
+.echo-control-order-settings .echo-control-order-sidebar-item { touch-action: none; user-select: none; }
+.echo-control-order-settings:has(.is-dragging) { user-select: none; }
 .echo-control-order-settings .echo-control-order-fallback-icon { display: grid; place-items: center; width: 100%; height: 100%; font-size: 18px; line-height: 1; }
 .echo-control-order-settings .echo-control-order-reset { justify-self: start; padding: 7px 11px; border-radius: 9px; color: var(--color-text-main); background: var(--color-bg-elevated); font-size: 11px; font-weight: 750; }
 .echo-control-order-settings .echo-control-order-reset:hover { background: color-mix(in srgb, var(--color-primary) 10%, var(--color-bg-elevated)); }
@@ -856,7 +882,7 @@ const SETTINGS_CSS = `
 .echo-control-order-fixed-slot { cursor: default !important; }
 @media (max-width: 720px) {
   .plugin-settings-dialog:has(.echo-control-order-settings) { width: 98vw !important; max-width: 98vw !important; }
-  .echo-control-order-settings .echo-control-order-track { grid-template-columns: minmax(0, max-content) minmax(0, 1fr) minmax(0, max-content); }
+  .echo-control-order-settings .echo-control-order-track { grid-template-columns: max-content max-content max-content; }
 }
 `;
 
@@ -951,38 +977,188 @@ const createSettingsComponent = (ctx) => {
         draft.sidebar[groupId].visible = Boolean(value);
         save();
       };
-      const startDrag = (kind, owner, zone, index, event) => {
-        dragging = { kind, owner, zone, index };
-        event.dataTransfer?.setData("text/plain", "echo-control-order");
-        if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
+      const clearDragTarget = () => {
+        dragging?.targetNode?.classList.remove("is-drag-target");
+        dragging.targetNode = null;
       };
-      const finishDrag = () => {
-        if (dragging) suppressClickUntil = Date.now() + 160;
-        dragging = null;
+      const updateDragGhost = (event) => {
+        const ghost = dragging?.ghostNode;
+        if (!ghost) return;
+        ghost.style.left = `${Math.round(event.clientX)}px`;
+        ghost.style.top = `${Math.round(event.clientY)}px`;
       };
-      const dropControl = (pageId, zone, index, event) => {
-        event.preventDefault();
-        if (!dragging || dragging.kind !== "control" || dragging.owner !== pageId) return;
+      const createDragGhost = (event) => {
+        if (!dragging?.sourceNode || typeof document === "undefined") return;
+        const source = dragging.sourceNode;
+        const rect = source.getBoundingClientRect?.();
+        const ghost = source.cloneNode?.(true);
+        if (!rect || !ghost) return;
+        const layer = document.createElement("div");
+        layer.className = "echo-control-order-settings echo-control-order-drag-layer";
+        layer.style.position = "fixed";
+        layer.style.inset = "0";
+        layer.style.display = "block";
+        layer.style.width = "0";
+        layer.style.height = "0";
+        layer.style.pointerEvents = "none";
+        layer.style.zIndex = "2147483646";
+        layer.style.transform = "none";
+        layer.style.filter = "none";
+        ghost.classList.remove("is-dragging", "is-drag-target");
+        ghost.classList.add("echo-control-order-drag-ghost");
+        ghost.setAttribute?.("aria-hidden", "true");
+        ghost.style.width = `${Math.round(rect.width)}px`;
+        ghost.style.height = `${Math.round(rect.height)}px`;
+        ghost.style.minWidth = `${Math.round(rect.width)}px`;
+        ghost.style.maxWidth = `${Math.round(rect.width)}px`;
+        ghost.style.boxSizing = "border-box";
+        layer.append(ghost);
+        document.body?.append(layer);
+        dragging.ghostLayer = layer;
+        dragging.ghostNode = ghost;
+        updateDragGhost(event);
+      };
+      const clearDragGhost = () => {
+        const layer = dragging?.ghostLayer;
+        const ghost = dragging?.ghostNode;
+        layer?.remove?.();
+        if (!layer) ghost?.remove?.();
+        if (dragging) {
+          dragging.ghostLayer = null;
+          dragging.ghostNode = null;
+        }
+      };
+      const setDragTarget = (node) => {
+        if (dragging?.targetNode === node) return;
+        clearDragTarget();
+        if (node) {
+          node.classList.add("is-drag-target");
+          dragging.targetNode = node;
+        }
+      };
+      const targetAtPoint = (event) => {
+        if (typeof document === "undefined" || typeof document.elementFromPoint !== "function") return null;
+        return document.elementFromPoint(event.clientX, event.clientY);
+      };
+      const resolveControlTarget = (pageId, event) => {
+        const hit = targetAtPoint(event);
+        const item = hit?.closest?.('[data-echo-control-order-kind="control-item"]');
+        if (item?.dataset.echoControlOrderPage === pageId) {
+          const rect = item.getBoundingClientRect();
+          const index = Number(item.dataset.echoControlOrderIndex);
+          return {
+            node: item,
+            zone: item.dataset.echoControlOrderZone,
+            index: Number.isFinite(index) && event.clientX > rect.left + rect.width / 2 ? index + 1 : index,
+          };
+        }
+        const zone = hit?.closest?.('[data-echo-control-order-kind="control-zone"]');
+        if (zone?.dataset.echoControlOrderPage === pageId) {
+          const zoneId = zone.dataset.echoControlOrderZone;
+          return { node: zone, zone: zoneId, index: draft[pageId][zoneId]?.length || 0 };
+        }
+        return null;
+      };
+      const resolveSidebarTarget = (groupId, event) => {
+        const hit = targetAtPoint(event);
+        const item = hit?.closest?.('[data-echo-control-order-kind="sidebar-item"]');
+        if (item?.dataset.echoControlOrderGroup === groupId) {
+          const rect = item.getBoundingClientRect();
+          const index = Number(item.dataset.echoControlOrderIndex);
+          return {
+            node: item,
+            index: Number.isFinite(index) && event.clientY > rect.top + rect.height / 2 ? index + 1 : index,
+          };
+        }
+        const zone = hit?.closest?.('[data-echo-control-order-kind="sidebar-zone"]');
+        if (zone?.dataset.echoControlOrderGroup === groupId) {
+          return { node: zone, index: draft.sidebar[groupId].items.length };
+        }
+        return null;
+      };
+      const dropControlAt = (pageId, zone, index) => {
+        if (!dragging || dragging.kind !== "control" || dragging.owner !== pageId) return false;
         const source = draft[pageId][dragging.zone];
         const target = draft[pageId][zone];
-        const [id] = source.splice(dragging.index, 1);
-        if (!id) return;
-        let targetIndex = Math.max(0, Math.min(index, target.length));
-        if (source === target && dragging.index < targetIndex) targetIndex -= 1;
-        target.splice(targetIndex, 0, id);
-        finishDrag();
-        save();
+        const id = source[dragging.index];
+        if (!id || !target) return false;
+        if (source === target) moveItem(source, dragging.index, index);
+        else {
+          source.splice(dragging.index, 1);
+          target.splice(Math.max(0, Math.min(index, target.length)), 0, id);
+        }
+        return true;
       };
-      const dropSidebar = (groupId, index, event) => {
-        event.preventDefault();
-        if (!dragging || dragging.kind !== "sidebar" || dragging.owner !== groupId) return;
+      const dropSidebarAt = (groupId, index) => {
+        if (!dragging || dragging.kind !== "sidebar" || dragging.owner !== groupId) return false;
         const list = draft.sidebar[groupId].items;
-        const [id] = list.splice(dragging.index, 1);
-        if (!id) return;
-        const targetIndex = Math.max(0, Math.min(index, list.length));
-        list.splice(targetIndex, 0, id);
-        finishDrag();
-        save();
+        if (!list[dragging.index]) return false;
+        moveItem(list, dragging.index, index);
+        return true;
+      };
+      const startPointerDrag = (kind, owner, zone, index, event) => {
+        if (dragging) return;
+        if (event.pointerType === "mouse" && event.button !== 0) return;
+        const sourceNode = event.currentTarget;
+        dragging = {
+          kind,
+          owner,
+          zone,
+          index,
+          pointerId: event.pointerId,
+          sourceNode,
+          startX: event.clientX,
+          startY: event.clientY,
+          active: false,
+          targetNode: null,
+        };
+        sourceNode?.setPointerCapture?.(event.pointerId);
+      };
+      const updatePointerDrag = (event) => {
+        if (!dragging || dragging.pointerId !== event.pointerId) return;
+        if (!dragging.active) {
+          const distance = Math.hypot(event.clientX - dragging.startX, event.clientY - dragging.startY);
+          if (distance < 4) return;
+          dragging.active = true;
+          dragging.sourceNode?.classList.add("is-dragging");
+          if (typeof document !== "undefined") document.body?.classList.add("echo-control-order-dragging");
+          createDragGhost(event);
+        }
+        event.preventDefault();
+        updateDragGhost(event);
+        const target =
+          dragging.kind === "control"
+            ? resolveControlTarget(dragging.owner, event)
+            : resolveSidebarTarget(dragging.owner, event);
+        setDragTarget(target?.node || null);
+      };
+      const finishPointerDrag = (event, cancelled = false) => {
+        if (!dragging || dragging.pointerId !== event.pointerId) return;
+        const current = dragging;
+        let changed = false;
+        if (current.active && !cancelled) {
+          event.preventDefault();
+          const target =
+            current.kind === "control"
+              ? resolveControlTarget(current.owner, event)
+              : resolveSidebarTarget(current.owner, event);
+          if (target) {
+            changed =
+              current.kind === "control"
+                ? dropControlAt(current.owner, target.zone, target.index)
+                : dropSidebarAt(current.owner, target.index);
+          }
+        }
+        if (current.active || changed) suppressClickUntil = Date.now() + 160;
+        current.sourceNode?.classList.remove("is-dragging");
+        clearDragTarget();
+        clearDragGhost();
+        if (typeof document !== "undefined") document.body?.classList.remove("echo-control-order-dragging");
+        if (current.sourceNode?.hasPointerCapture?.(current.pointerId)) {
+          current.sourceNode.releasePointerCapture(current.pointerId);
+        }
+        dragging = null;
+        if (changed) save();
       };
 
       const renderSidebarItem = (groupId, id, index) => {
@@ -995,12 +1171,14 @@ const createSettingsComponent = (ctx) => {
             key: `${groupId}-${id}`,
             type: "button",
             class: ["echo-control-order-sidebar-item", disabled ? "is-disabled" : ""],
-            draggable: true,
+            "data-echo-control-order-kind": "sidebar-item",
+            "data-echo-control-order-group": groupId,
+            "data-echo-control-order-index": String(index),
             onClick: () => toggleSidebarHidden(groupId, id),
-            onDragstart: (event) => startDrag("sidebar", groupId, "items", index, event),
-            onDragend: finishDrag,
-            onDragover: (event) => event.preventDefault(),
-            onDrop: (event) => dropSidebar(groupId, index, event),
+            onPointerdown: (event) => startPointerDrag("sidebar", groupId, "items", index, event),
+            onPointermove: updatePointerDrag,
+            onPointerup: finishPointerDrag,
+            onPointercancel: (event) => finishPointerDrag(event, true),
           },
           [
             h("span", { class: "echo-control-order-icon", "aria-hidden": "true", innerHTML: sidebarIconMarkup(label) }),
@@ -1031,8 +1209,8 @@ const createSettingsComponent = (ctx) => {
             "div",
             {
               class: "echo-control-order-sidebar-list",
-              onDragover: (event) => event.preventDefault(),
-              onDrop: (event) => dropSidebar(groupId, group.items.length, event),
+              "data-echo-control-order-kind": "sidebar-zone",
+              "data-echo-control-order-group": groupId,
             },
             group.items.map((id, index) => renderSidebarItem(groupId, id, index)),
           ),
@@ -1050,13 +1228,16 @@ const createSettingsComponent = (ctx) => {
             key: `${pageId}-${zone}-${id}`,
             type: "button",
             class: ["echo-control-order-item", zone === "left" ? "is-small" : "", disabled ? "is-disabled" : ""],
-            draggable: true,
+            "data-echo-control-order-kind": "control-item",
+            "data-echo-control-order-page": pageId,
+            "data-echo-control-order-zone": zone,
+            "data-echo-control-order-index": String(index),
             title: disabled ? `点击启用${controlLabel(pageId, id)}` : `点击停用${controlLabel(pageId, id)}`,
             onClick: () => toggleHidden(pageId, id),
-            onDragstart: (event) => startDrag("control", pageId, zone, index, event),
-            onDragend: finishDrag,
-            onDragover: (event) => event.preventDefault(),
-            onDrop: (event) => dropControl(pageId, zone, index, event),
+            onPointerdown: (event) => startPointerDrag("control", pageId, zone, index, event),
+            onPointermove: updatePointerDrag,
+            onPointerup: finishPointerDrag,
+            onPointercancel: (event) => finishPointerDrag(event, true),
           },
           [
             h("span", { class: "echo-control-order-icon", "aria-hidden": "true", innerHTML: controlIconMarkup(id, pageId) }),
@@ -1070,19 +1251,22 @@ const createSettingsComponent = (ctx) => {
           "div",
           {
             class: ["echo-control-order-zone", `echo-control-order-zone-${zone}`, zone === "right" ? "echo-control-order-zone-right" : ""],
-            onDragover: (event) => event.preventDefault(),
-            onDrop: (event) => dropControl(pageId, zone, draft[pageId][zone].length, event),
+            "data-echo-control-order-kind": "control-zone",
+            "data-echo-control-order-page": pageId,
+            "data-echo-control-order-zone": zone,
           },
           [
             h("div", { class: "echo-control-order-zone-title" }, ZONE_LABELS[zone]),
-            ...draft[pageId][zone].map((id, index) => renderControlItem(pageId, zone, id, index)),
+            ...(draft[pageId][zone].length
+              ? draft[pageId][zone].map((id, index) => renderControlItem(pageId, zone, id, index))
+              : [h("div", { class: "echo-control-order-empty-slot", "aria-hidden": "true" })]),
           ],
         );
 
       const controlLayout = (pageId) => {
         return {
-          track: "minmax(0, max-content) minmax(0, 1fr) minmax(0, max-content)",
-          center: "minmax(0, max-content) auto minmax(0, max-content)",
+          track: "max-content max-content max-content",
+          center: "max-content max-content max-content",
         };
       };
 
@@ -1090,7 +1274,6 @@ const createSettingsComponent = (ctx) => {
         h("div", { class: "echo-control-order-fixed", key: `${pageId}-fixed-${id}` }, [
           h("span", { class: "echo-control-order-icon", "aria-hidden": "true", innerHTML: controlIconMarkup(id, pageId) }),
           h("span", { class: "echo-control-order-item-label" }, FIXED_CONTROL_LABELS[id]),
-          h("span", { class: "echo-control-order-fixed-lock" }, "固定"),
         ]);
 
       const renderControlPage = (pageId) =>
@@ -1108,6 +1291,7 @@ const createSettingsComponent = (ctx) => {
                 h("div", { class: "echo-control-order-center-track", style: { gridTemplateColumns: controlLayout(pageId).center } }, [
                   renderZone(pageId, "before"),
                   h("div", { class: "echo-control-order-fixed-strip" }, [
+                    h("div", { class: "echo-control-order-fixed-strip-title" }, "固定"),
                     renderFixed(pageId, "previous"),
                     renderFixed(pageId, "play"),
                     renderFixed(pageId, "next"),
