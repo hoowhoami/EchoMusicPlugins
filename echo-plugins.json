@@ -101,8 +101,8 @@
     {
       "id": "mv-enhancer",
       "path": "mv-enhancer",
-      "repo": "https://github.com/yaodao0yaodao/EchoMusicPlugins",
-      "homepage": "https://github.com/yaodao0yaodao/EchoMusicPlugins/tree/main/mv-enhancer",
+      "repo": "https://github.com/hoowhoami/EchoMusicPlugins",
+      "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/mv-enhancer",
       "tags": [
         "mv",
         "video",
@@ -112,8 +112,8 @@
     {
       "id": "playback-control-order",
       "path": "playback-control-order",
-      "repo": "https://github.com/yaodao0yaodao/EchoMusicPlugins",
-      "homepage": "https://github.com/yaodao0yaodao/EchoMusicPlugins/tree/main/playback-control-order",
+      "repo": "https://github.com/hoowhoami/EchoMusicPlugins",
+      "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/playback-control-order",
       "tags": [
         "player",
         "appearance",

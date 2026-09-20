@@ -10,10 +10,10 @@ test("MV and playback plugin entries use the repository containing this PR", () 
   for (const id of ["mv-enhancer", "playback-control-order"]) {
     const plugin = source.plugins.find((entry) => entry.id === id);
     assert.ok(plugin, `missing plugin source entry: ${id}`);
-    assert.equal(plugin.repo, "https://github.com/yaodao0yaodao/EchoMusicPlugins");
+    assert.equal(plugin.repo, "https://github.com/hoowhoami/EchoMusicPlugins");
     assert.equal(
       plugin.homepage,
-      `https://github.com/yaodao0yaodao/EchoMusicPlugins/tree/main/${plugin.path}`,
+      `https://github.com/hoowhoami/EchoMusicPlugins/tree/main/${plugin.path}`,
     );
   }
 });
