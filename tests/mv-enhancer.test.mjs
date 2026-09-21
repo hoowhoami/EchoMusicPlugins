@@ -60,35 +60,33 @@ test("MV enhancer parses every returned video version and source", () => {
   assert.equal(api.formatResolution(versions[0].sources[0]), "1920×1080");
 });
 
-test("MV enhancer prefers the requested codec and resolution, then degrades safely", () => {
+test("MV enhancer chooses the highest H.265 resolution then falls back to highest H.264", () => {
   const sources = api.parseMvVersions(payload)[0].sources;
-  assert.equal(
-    api.pickDefaultSource(sources, {
-      defaultCodec: "H.265",
-      defaultResolution: "1920×1080",
-    }).hash,
-    "h265-fhd",
-  );
-  assert.equal(
-    api.pickDefaultSource(sources, {
-      defaultCodec: "H.265",
-      defaultResolution: "1920×1080",
-    }).hash,
-    "h265-fhd",
-  );
-  assert.equal(api.pickDefaultSource(sources, {}).hash, "h264-fhd");
+  assert.equal(api.pickDefaultSource(sources).hash, "h265-fhd");
+  assert.equal(api.pickDefaultSource(sources.filter((source) => source.codec !== "H.265")).hash, "h264-fhd");
+  assert.equal(api.pickDefaultSource([...sources, { codec: "H.265", hash: "h265-hd", width: 1280, height: 720 }]).hash, "h265-fhd");
+  assert.equal(api.pickDefaultSource([]), null);
 });
 
-test("MV enhancer uses H.265 as the fresh default and presents codec order", () => {
-  assert.equal(api.normalizeSettings({}).defaultCodec, "H.265");
-  assert.deepEqual(api.orderCodecs(["MKV", "H.264", "H.265", "VP9", "H.264"]), [
-    "H.265",
-    "H.264",
-    "MKV",
-    "VP9",
-  ]);
+test("MV search detail only resolves a song when its versions contain the current MV", () => {
+  const detail = { data: [{ album_audio_id: 123456 }] };
+  assert.equal(api.matchSongIdForMv(detail, payload, { videoId: "v1" }), "123456");
+  assert.equal(api.matchSongIdForMv(detail, payload, { hash: "version-hash-2" }), "123456");
+  assert.equal(api.matchSongIdForMv(detail, payload, { hash: "unrelated" }), "");
+  assert.equal(api.matchSongIdForMv({ data: [{ album_audio_id: 0 }] }, payload, { videoId: "v1" }), "");
+  assert.equal(api.matchSongIdForMv(detail, { data: [] }, { videoId: "v1" }), "");
 });
 
 test("MV enhancer does not impose a host version gate", () => {
   assert.equal(manifest.requires, undefined);
+});
+
+test("MV versions scroll horizontally, show duration under artist, and remove quality selectors", () => {
+  assert.match(source, /\.echo-mv-enhancer-version-list\s*\{[^}]*display:\s*flex;[^}]*overflow-x:\s*auto;/s);
+  assert.match(source, /\.echo-mv-enhancer-detail-card\s*\{[^}]*flex:\s*0 0 clamp\(/s);
+  assert.match(source, /list\.setPointerCapture\(event\.pointerId\)/);
+  assert.match(source, /if \(!suppressClick\) return;/);
+  assert.match(source, /detailCopy\.append\(createElement\("div", "echo-mv-enhancer-detail-meta", `时长 /);
+  assert.doesNotMatch(source, /echo-mv-enhancer-quality-bar|echo-mv-enhancer-select|renderQuality/);
+  assert.match(source, /matchSongIdForMv\(detail, versions, routeKey\)/);
 });

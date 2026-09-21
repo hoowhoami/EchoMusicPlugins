@@ -1,10 +1,3 @@
-const STORAGE_KEY = "settings";
-
-export const DEFAULT_SETTINGS = Object.freeze({
-  defaultCodec: "H.265",
-  defaultResolution: "",
-});
-
 const asRecord = (value) =>
   value && typeof value === "object" && !Array.isArray(value) ? value : {};
 
@@ -94,16 +87,6 @@ const formatDuration = (value) => {
   return `${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
 };
 
-export const normalizeSettings = (value) => {
-  const source = asRecord(value);
-  return {
-    defaultCodec: Object.prototype.hasOwnProperty.call(source, "defaultCodec")
-      ? asString(source.defaultCodec)
-      : DEFAULT_SETTINGS.defaultCodec,
-    defaultResolution: asString(source.defaultResolution),
-  };
-};
-
 const QUALITY_META = {
   fhd: { label: "1080P", width: 1920, height: 1080 },
   hd: { label: "720P", width: 1280, height: 720 },
@@ -117,15 +100,6 @@ const CODECS = [
   ["h264", "H.264"],
   ["mkv", "MKV"],
 ];
-
-export const orderCodecs = (values) => {
-  const preferred = ["H.265", "H.264", "MKV"];
-  const uniqueValues = [...new Set((Array.isArray(values) ? values : []).map(asString).filter(Boolean))];
-  return [
-    ...preferred.filter((codec) => uniqueValues.includes(codec)),
-    ...uniqueValues.filter((codec) => !preferred.includes(codec)),
-  ];
-};
 
 const resolveRecords = (payload) => {
   const root = asRecord(payload);
@@ -293,19 +267,15 @@ const mapPrivilegeSources = (payload) => {
     .filter((source) => source.hash);
 };
 
-export const pickDefaultSource = (sources, settings = DEFAULT_SETTINGS) => {
+export const pickDefaultSource = (sources) => {
   const list = Array.isArray(sources) ? sources : [];
   if (!list.length) return null;
-  const codec = asString(settings.defaultCodec);
-  const resolution = asString(settings.defaultResolution);
-  const codecMatches = (source) => !codec || asString(source.codec) === codec;
-  const resolutionMatches = (source) => !resolution || formatResolution(source) === resolution;
-  return (
-    list.find((source) => codecMatches(source) && resolutionMatches(source)) ||
-    list.find((source) => codecMatches(source)) ||
-    list.find((source) => resolutionMatches(source)) ||
-    list[0]
-  );
+  const best = (items) => [...items].sort((left, right) =>
+    (right.width || 0) * (right.height || 0) - (left.width || 0) * (left.height || 0) ||
+    (right.bitrate || 0) - (left.bitrate || 0),
+  )[0];
+  return best(list.filter((source) => source.codec === "H.265")) ||
+    best(list.filter((source) => source.codec === "H.264")) || best(list);
 };
 
 const wait = (milliseconds) => new Promise((resolve) => window.setTimeout(resolve, milliseconds));
@@ -321,6 +291,22 @@ const readRouteKey = (ctx) => {
     videoId: asString(query.videoId || (!query.albumAudioId && !query.mixSongId ? route.params?.id : "")),
     cover: asString(query.cover),
   };
+};
+
+const validSongId = (value) => /^\d+$/.test(asString(value)) && Number(value) > 0;
+
+export const matchSongIdForMv = (detail, versionsPayload, routeKey) => {
+  const data = asRecord(detail).data;
+  const record = Array.isArray(data) ? asRecord(data[0]) : {};
+  const songId = asString(record.album_audio_id || record.audio_id);
+  if (!validSongId(songId)) return "";
+  const versions = parseMvVersions(versionsPayload);
+  const hash = asString(routeKey.hash).toLowerCase();
+  const videoId = asString(routeKey.videoId);
+  return versions.some((version) =>
+    (hash && (version.hash.toLowerCase() === hash || version.sources.some((source) => source.hash.toLowerCase() === hash))) ||
+    (videoId && version.id === videoId),
+  ) ? songId : "";
 };
 
 const readHostVersionIndex = (wrap) => {
@@ -372,87 +358,56 @@ const QUALITY_STYLE = `
   gap: 16px;
 }
 
-.echo-mv-enhancer-panel .echo-mv-enhancer-heading,
-.echo-mv-enhancer-panel .echo-mv-enhancer-quality-heading,
-.echo-mv-enhancer-panel .echo-mv-enhancer-version-heading {
+.echo-mv-enhancer-panel .echo-mv-enhancer-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-.echo-mv-enhancer-panel .echo-mv-enhancer-heading-copy,
-.echo-mv-enhancer-panel .echo-mv-enhancer-quality-copy {
+.echo-mv-enhancer-panel .echo-mv-enhancer-heading-copy {
   display: grid;
   gap: 4px;
 }
 
-.echo-mv-enhancer-panel .echo-mv-enhancer-heading-title,
-.echo-mv-enhancer-panel .echo-mv-enhancer-quality-title,
-.echo-mv-enhancer-panel .echo-mv-enhancer-version-title {
+.echo-mv-enhancer-panel .echo-mv-enhancer-heading-title {
   color: var(--color-text-main);
   font-size: 15px;
   font-weight: 800;
 }
 
-.echo-mv-enhancer-panel .echo-mv-enhancer-heading-hint,
-.echo-mv-enhancer-panel .echo-mv-enhancer-quality-hint {
+.echo-mv-enhancer-panel .echo-mv-enhancer-heading-hint {
   color: color-mix(in srgb, var(--color-text-main) 56%, transparent);
   font-size: 11px;
   line-height: 1.45;
 }
 
-.echo-mv-enhancer-panel .echo-mv-enhancer-quality-box {
-  display: grid;
-  gap: 12px;
-  padding: 14px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 14px;
-  background: var(--control-muted-bg);
-}
-
-.echo-mv-enhancer-panel .echo-mv-enhancer-quality-fields {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.echo-mv-enhancer-panel .echo-mv-enhancer-quality-field {
-  display: grid;
-  gap: 6px;
-  color: var(--color-text-main);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.echo-mv-enhancer-panel .echo-mv-enhancer-select {
-  width: 100%;
-  min-height: 34px;
-  padding: 0 10px;
-  border: 1px solid var(--control-border);
-  border-radius: 9px;
-  color: var(--color-text-main);
-  background: var(--color-bg-elevated);
-  outline: none;
-}
-
-.echo-mv-enhancer-panel .echo-mv-enhancer-select:focus {
-  border-color: var(--color-primary);
-}
-
 .echo-mv-enhancer-panel .echo-mv-enhancer-version-list {
-  display: grid;
-  gap: 10px;
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 2px 10px;
+  touch-action: pan-x;
+  user-select: none;
+  cursor: grab;
+}
+
+.echo-mv-enhancer-panel .echo-mv-enhancer-version-list.is-dragging {
+  cursor: grabbing;
 }
 
 .echo-mv-enhancer-panel .echo-mv-enhancer-detail-card {
   display: grid;
-  gap: 14px;
-  padding: 16px;
+  flex: 0 0 clamp(240px, 26vw, 280px);
+  align-content: start;
+  gap: 10px;
+  padding: 12px;
   border: 1px solid var(--content-panel-border, var(--border-subtle));
   border-radius: 16px;
   background: var(--control-muted-bg);
-  cursor: pointer;
+  cursor: inherit;
 }
 
 .echo-mv-enhancer-panel .echo-mv-enhancer-detail-card.is-active {
@@ -461,15 +416,14 @@ const QUALITY_STYLE = `
 
 .echo-mv-enhancer-panel .echo-mv-enhancer-detail-header {
   display: grid;
-  grid-template-columns: 80px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  cursor: pointer;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
 }
 
 .echo-mv-enhancer-panel .echo-mv-enhancer-detail-cover-wrap {
-  width: 80px;
-  height: 80px;
+  width: 64px;
+  height: 64px;
   overflow: hidden;
   border-radius: 12px;
   background: var(--color-bg-elevated);
@@ -500,7 +454,7 @@ const QUALITY_STYLE = `
 .echo-mv-enhancer-panel .echo-mv-enhancer-detail-title {
   overflow: hidden;
   color: var(--color-text-main);
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -515,6 +469,7 @@ const QUALITY_STYLE = `
 }
 
 .echo-mv-enhancer-panel .echo-mv-enhancer-detail-status {
+  grid-column: 2;
   color: var(--color-primary);
   font-size: 11px;
   font-weight: 800;
@@ -523,14 +478,17 @@ const QUALITY_STYLE = `
 
 .echo-mv-enhancer-panel .echo-mv-enhancer-detail-stats {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  gap: 4px;
 }
 
 .echo-mv-enhancer-panel .echo-mv-enhancer-detail-stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   min-width: 0;
-  padding: 10px 11px;
-  border-radius: 11px;
+  padding: 5px 8px;
+  border-radius: 8px;
   background: color-mix(in srgb, var(--color-text-main) 5%, transparent);
 }
 
@@ -540,10 +498,9 @@ const QUALITY_STYLE = `
 }
 
 .echo-mv-enhancer-panel .echo-mv-enhancer-detail-stat-value {
-  margin-top: 5px;
   overflow: hidden;
   color: var(--color-text-main);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -552,25 +509,25 @@ const QUALITY_STYLE = `
 .echo-mv-enhancer-panel .echo-mv-enhancer-detail-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
 }
 
 .echo-mv-enhancer-panel .echo-mv-enhancer-detail-tag {
   display: inline-flex;
   align-items: center;
-  min-height: 24px;
-  padding: 0 9px;
+  min-height: 20px;
+  padding: 0 7px;
   border-radius: 999px;
   color: var(--color-primary-text);
   background: color-mix(in srgb, var(--color-primary) 10%, transparent);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
 }
 
 .echo-mv-enhancer-panel .echo-mv-enhancer-detail-description {
   color: color-mix(in srgb, var(--color-text-main) 66%, transparent);
-  font-size: 12px;
-  line-height: 1.65;
+  font-size: 11px;
+  line-height: 1.45;
   white-space: pre-wrap;
 }
 
@@ -583,25 +540,8 @@ const QUALITY_STYLE = `
 }
 
 @media (max-width: 640px) {
-  .echo-mv-enhancer-panel .echo-mv-enhancer-quality-fields {
-    grid-template-columns: 1fr;
-  }
-
-  .echo-mv-enhancer-panel .echo-mv-enhancer-detail-header {
-    grid-template-columns: 64px minmax(0, 1fr);
-  }
-
-  .echo-mv-enhancer-panel .echo-mv-enhancer-detail-cover-wrap {
-    width: 64px;
-    height: 64px;
-  }
-
-  .echo-mv-enhancer-panel .echo-mv-enhancer-detail-status {
-    grid-column: 2;
-  }
-
-  .echo-mv-enhancer-panel .echo-mv-enhancer-detail-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .echo-mv-enhancer-panel .echo-mv-enhancer-detail-card {
+    flex-basis: min(80vw, 280px);
   }
 }
 `;
@@ -612,61 +552,14 @@ let routeDispose = null;
 let observeDispose = null;
 let active = null;
 let generation = 0;
+const validatedSearchPages = new WeakSet();
 
 const getCurrentSources = (page) => page.versions[page.currentIndex]?.sources || [];
-
-const persistSettings = (page) => {
-  if (typeof runtimeCtx?.storage?.set === "function") {
-    void runtimeCtx.storage.set(STORAGE_KEY, { ...page.settings });
-  }
-};
-
-const addOption = (select, value, label, selected) => {
-  const option = createElement("option", "", label);
-  option.value = String(value);
-  option.selected = String(value) === String(selected);
-  select.append(option);
-};
-
-const renderQuality = (page) => {
-  const fields = page.panel.querySelector(".echo-mv-enhancer-quality-fields");
-  if (!fields) return;
-  fields.replaceChildren();
-  const sources = page.versions.flatMap((version) => version.sources);
-  const codecs = orderCodecs(sources.map((source) => asString(source.codec)));
-  const resolutions = [...new Set(sources.map(formatResolution).filter((value) => !value.startsWith("未知")))];
-
-  const codecLabel = createElement("label", "echo-mv-enhancer-quality-field", "视频编码");
-  const codecSelect = createElement("select", "echo-mv-enhancer-select");
-  addOption(codecSelect, "", "自动", page.settings.defaultCodec);
-  for (const codec of codecs) addOption(codecSelect, codec, codec, page.settings.defaultCodec);
-  codecSelect.addEventListener("change", () => {
-    if (page.settings.defaultCodec === codecSelect.value) return;
-    page.settings.defaultCodec = codecSelect.value;
-    persistSettings(page);
-    void applySelectedSource(page);
-  });
-
-  const resolutionLabel = createElement("label", "echo-mv-enhancer-quality-field", "分辨率");
-  const resolutionSelect = createElement("select", "echo-mv-enhancer-select");
-  addOption(resolutionSelect, "", "自动（最高）", page.settings.defaultResolution);
-  for (const resolution of resolutions)
-    addOption(resolutionSelect, resolution, resolution, page.settings.defaultResolution);
-  resolutionSelect.addEventListener("change", () => {
-    if (page.settings.defaultResolution === resolutionSelect.value) return;
-    page.settings.defaultResolution = resolutionSelect.value;
-    persistSettings(page);
-    void applySelectedSource(page);
-  });
-
-  codecLabel.append(codecSelect);
-  resolutionLabel.append(resolutionSelect);
-  fields.append(codecLabel, resolutionLabel);
-};
 
 const renderVersions = (page) => {
   const list = page.panel.querySelector(".echo-mv-enhancer-version-list");
   if (!list) return;
+  const previousScrollLeft = list.scrollLeft;
   list.replaceChildren();
   if (!page.versions.length) {
     list.append(createElement("div", "echo-mv-enhancer-empty", page.error || "未读取到 MV 详情"));
@@ -682,6 +575,7 @@ const renderVersions = (page) => {
       cover.src = coverUrl;
       cover.alt = version.title;
       cover.loading = "lazy";
+      cover.draggable = false;
       cover.addEventListener("error", () => {
         if (page.fallbackCover && cover.src !== page.fallbackCover) {
           cover.src = page.fallbackCover;
@@ -701,6 +595,7 @@ const renderVersions = (page) => {
     detailCopy.append(
       createElement("div", "echo-mv-enhancer-detail-meta", authorLine || "未知歌手 · 发布时间未知"),
     );
+    detailCopy.append(createElement("div", "echo-mv-enhancer-detail-meta", `时长 ${formatDuration(version.duration)}`));
     const status = createElement(
       "span",
       "echo-mv-enhancer-detail-status",
@@ -712,7 +607,6 @@ const renderVersions = (page) => {
     const stats = createElement("div", "echo-mv-enhancer-detail-stats");
     for (const [label, value] of [
       ["播放量", formatCount(version.playCount)],
-      ["时长", formatDuration(version.duration)],
       ["收藏", formatCount(version.collectionCount)],
       ["下载", formatCount(version.downloadCount)],
     ]) {
@@ -743,6 +637,50 @@ const renderVersions = (page) => {
 
     list.append(group);
   });
+  list.scrollLeft = previousScrollLeft;
+};
+
+const enableVersionDragScroll = (list) => {
+  let start = null;
+  let suppressClick = false;
+  list.addEventListener("pointerdown", (event) => {
+    if (event.pointerType !== "mouse" || event.button !== 0 || list.scrollWidth <= list.clientWidth) return;
+    start = { id: event.pointerId, x: event.clientX, scrollLeft: list.scrollLeft, moved: false };
+  });
+  list.addEventListener("pointermove", (event) => {
+    if (!start || event.pointerId !== start.id) return;
+    const distance = event.clientX - start.x;
+    if (!start.moved && Math.abs(distance) < 5) return;
+    if (!start.moved) {
+      start.moved = true;
+      list.setPointerCapture(event.pointerId);
+      list.classList.add("is-dragging");
+    }
+    list.scrollLeft = start.scrollLeft - distance;
+    event.preventDefault();
+  });
+  const finish = (event) => {
+    if (!start || event.pointerId !== start.id) return;
+    if (start.moved) {
+      suppressClick = true;
+      setTimeout(() => { suppressClick = false; }, 0);
+    }
+    start = null;
+    list.classList.remove("is-dragging");
+    if (list.hasPointerCapture(event.pointerId)) list.releasePointerCapture(event.pointerId);
+  };
+  list.addEventListener("pointerup", finish);
+  list.addEventListener("pointercancel", finish);
+  list.addEventListener("pointerleave", () => {
+    if (start && !start.moved) start = null;
+  });
+  list.addEventListener("click", (event) => {
+    if (!suppressClick) return;
+    event.preventDefault();
+    event.stopPropagation();
+    suppressClick = false;
+  }, true);
+  list.addEventListener("dragstart", (event) => event.preventDefault());
 };
 
 const renderPanel = (page) => {
@@ -751,30 +689,26 @@ const renderPanel = (page) => {
   const headingCopy = createElement("div", "echo-mv-enhancer-heading-copy");
   headingCopy.append(
     createElement("div", "echo-mv-enhancer-heading-title", "MV 详情"),
-    createElement("div", "echo-mv-enhancer-heading-hint", "完整展示全部 MV 详情，点击详情卡片即可切换版本。"),
+    createElement("div", "echo-mv-enhancer-heading-hint", "横向拖动浏览版本，点击卡片即可切换。"),
   );
   heading.append(headingCopy);
 
   const versions = createElement("div", "echo-mv-enhancer-version-list");
   versions.append(createElement("div", "echo-mv-enhancer-loading", "正在读取 MV 详情…"));
-
-  const quality = createElement("div", "echo-mv-enhancer-quality-box");
-  const qualityHeading = createElement("div", "echo-mv-enhancer-quality-heading");
-  const qualityCopy = createElement("div", "echo-mv-enhancer-quality-copy");
-  qualityCopy.append(
-    createElement("div", "echo-mv-enhancer-quality-title", "默认画质"),
-    createElement("div", "echo-mv-enhancer-quality-hint", "设置视频编码和分辨率，切换版本时自动匹配。"),
-  );
-  qualityHeading.append(qualityCopy);
-  const fields = createElement("div", "echo-mv-enhancer-quality-fields");
-  quality.append(qualityHeading, fields);
-
-  page.panel.append(heading, versions, quality);
+  enableVersionDragScroll(versions);
+  page.panel.append(heading, versions);
 };
 
 const clickHostSource = async (page, source) => {
-  const cards = [...page.wrap.querySelectorAll(".mv-source-card")];
-  const target = cards.find((card) => sourceMatches(card, source)) || cards[0];
+  let target = null;
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const cards = [...page.wrap.querySelectorAll(".mv-source-card")];
+    target = cards.find((card) => sourceMatches(card, source)) ||
+      cards.find((card) => card.textContent?.includes(source.codec) &&
+        card.textContent?.includes(formatResolution(source)));
+    if (target || page.disposed) break;
+    await wait(50);
+  }
   if (!target || typeof target.click !== "function") return false;
   if (target.classList.contains("is-active") || sourceMatches(findActiveHostSource(page), source)) {
     return true;
@@ -804,7 +738,7 @@ const selectHostVersion = async (page, index) => {
       hostIndex = readHostVersionIndex(page.wrap);
     }
   }
-  if (hostIndex === null) hostIndex = page.currentIndex;
+  if (hostIndex === null) hostIndex = 0;
   while (hostIndex < index) {
     const button = findHostVersionButton(page.wrap, 1);
     if (!button) break;
@@ -841,10 +775,10 @@ const applySelectedSource = async (page) => {
   page.busy = true;
   try {
     await ensureSources(page, version);
-    renderQuality(page);
     const hostIndex = readHostVersionIndex(page.wrap);
-    if (hostIndex !== page.currentIndex) await selectHostVersion(page, page.currentIndex);
-    const source = pickDefaultSource(version.sources, page.settings);
+    if (hostIndex !== page.currentIndex && (hostIndex !== null || page.currentIndex > 0))
+      await selectHostVersion(page, page.currentIndex);
+    const source = pickDefaultSource(version.sources);
     if (source && !sourceMatches(findActiveHostSource(page), source)) {
       await clickHostSource(page, source);
     }
@@ -888,14 +822,67 @@ const loadPage = async (page, token) => {
   });
   page.wrap.classList.toggle("echo-mv-enhancer-hide-host-detail", page.versions.length > 0);
   page.error = page.versions.length ? "" : "当前接口没有返回可用版本";
-  page.currentIndex = Math.min(readHostVersionIndex(page.wrap) ?? 0, Math.max(page.versions.length - 1, 0));
+  const requestedIndex = page.versions.findIndex((version) =>
+    (routeKey.hash && (version.hash.toLowerCase() === routeKey.hash.toLowerCase() ||
+      version.sources.some((source) => source.hash.toLowerCase() === routeKey.hash.toLowerCase()))) ||
+    (routeKey.videoId && version.id === routeKey.videoId),
+  );
+  page.currentIndex = requestedIndex >= 0 ? requestedIndex :
+    Math.min(readHostVersionIndex(page.wrap) ?? 0, Math.max(page.versions.length - 1, 0));
   renderVersions(page);
-  renderQuality(page);
+  if (page.versions.length) await applySelectedSource(page);
 };
 
 const attach = (wrap) => {
   if (!routeIsMv(runtimeCtx)) return () => {};
   if (active?.wrap === wrap) return () => {};
+  const routeKey = readRouteKey(runtimeCtx);
+  if (routeKey.videoId && validSongId(routeKey.albumAudioId) && !validatedSearchPages.has(wrap)) {
+    let cancelled = false;
+    let mountedCleanup = null;
+    const videoApi = runtimeCtx?.kugou?.video;
+    if (typeof videoApi?.getSongMv === "function") {
+      void Promise.resolve(videoApi.getSongMv(routeKey.albumAudioId)).then((versions) => {
+        if (cancelled || matchSongIdForMv(
+          { data: [{ album_audio_id: routeKey.albumAudioId }] }, versions, routeKey,
+        ) !== routeKey.albumAudioId) return;
+        validatedSearchPages.add(wrap);
+        mountedCleanup = attach(wrap);
+      }).catch(() => {});
+    }
+    return () => {
+      cancelled = true;
+      mountedCleanup?.();
+      validatedSearchPages.delete(wrap);
+    };
+  }
+  if (!validSongId(routeKey.albumAudioId)) {
+    let cancelled = false;
+    const videoApi = runtimeCtx?.kugou?.video;
+    if (routeKey.videoId && typeof videoApi?.getVideoDetail === "function" &&
+      typeof videoApi?.getSongMv === "function" && typeof runtimeCtx?.router?.replace === "function") {
+      void (async () => {
+        try {
+          const detail = await videoApi.getVideoDetail(routeKey.videoId);
+          const data = asRecord(detail).data;
+          const record = Array.isArray(data) ? asRecord(data[0]) : {};
+          const songId = asString(record.album_audio_id || record.audio_id);
+          if (cancelled || !validSongId(songId)) return;
+          const versions = await videoApi.getSongMv(songId);
+          if (cancelled || matchSongIdForMv(detail, versions, routeKey) !== songId) return;
+          const currentRoute = runtimeCtx.router.currentRoute.value;
+          await runtimeCtx.router.replace({
+            name: "mv-detail",
+            params: currentRoute.params,
+            query: { ...currentRoute.query, albumAudioId: songId },
+          });
+        } catch {
+          // 关联歌曲无法核实或导航失败时保持搜索 MV 原页面。
+        }
+      })();
+    }
+    return () => { cancelled = true; };
+  }
   detach();
   const page = {
     wrap,
@@ -913,7 +900,6 @@ const attach = (wrap) => {
     })(),
     versions: [],
     currentIndex: 0,
-    settings: normalizeSettings(null),
     error: "",
     busy: false,
     disposed: false,
@@ -933,17 +919,7 @@ const attach = (wrap) => {
     else wrap.prepend(page.panel);
   }
   renderPanel(page);
-  const savedSettings =
-    typeof runtimeCtx?.storage?.get === "function"
-      ? runtimeCtx.storage.get(STORAGE_KEY)
-      : Promise.resolve(null);
-  void Promise.resolve(savedSettings)
-    .then((saved) => {
-      if (!active || active !== page || page.disposed) return;
-      page.settings = normalizeSettings(saved);
-      renderQuality(page);
-      return loadPage(page, token);
-    })
+  void loadPage(page, token)
     .catch(() => {
       if (!active || active !== page || page.disposed) return;
       page.error = "读取视频版本失败";
