@@ -16,6 +16,7 @@ const api = await import(
 );
 
 const source = await readFile(new URL("../playback-control-order/index.js", import.meta.url), "utf8");
+const catalog = JSON.parse(await readFile(new URL("../echo-plugins.json", import.meta.url), "utf8"));
 
 test("playback control order keeps each movable control once and fills missing controls", () => {
   const layout = api.normalizeLayout(
@@ -38,6 +39,42 @@ test("playback control order keeps each movable control once and fills missing c
     after: [],
     right: ["favorite"],
   });
+});
+
+test("sidebar settings use three columns and adapt to narrower dialogs", () => {
+  assert.doesNotMatch(source, /echo-control-order-sidebar-section/);
+  assert.match(source, /grid-template-columns: repeat\(3, 220px\)/);
+  assert.match(source, /justify-content: center/);
+  assert.match(source, /grid-template-areas: "discover library playlists"/);
+  assert.match(source, /@container echo-control-order-settings \(max-width: 740px\)/);
+  assert.match(source, /grid-template-areas: "library discover" "library playlists"/);
+  assert.match(source, /@container echo-control-order-settings \(max-width: 500px\)/);
+  assert.match(source, /grid-template-areas: "discover" "library" "playlists"/);
+  assert.match(source, /echo-control-order-sidebar-group-\$\{groupId\}/);
+  assert.equal(api.SIDEBAR_GROUPS.discover.description, undefined);
+  assert.equal(api.SIDEBAR_GROUPS.library.description, undefined);
+  assert.equal(api.SIDEBAR_GROUPS.playlists.description, undefined);
+});
+
+test("settings explanations sit beside their headings and explain sidebar behavior", () => {
+  assert.match(source, /echo-control-order-header,\s*\.echo-control-order-settings \.echo-control-order-section-heading,\s*\.echo-control-order-settings \.echo-control-order-page-heading \{ display: flex/);
+  assert.match(source, /class: "echo-control-order-page-heading"/);
+  assert.match(source, /点击项目切换显示/);
+  assert.match(source, /不能跨分类/);
+  assert.match(source, /歌单总开关控制整个歌单区/);
+  assert.match(source, /自建歌单由主程序管理/);
+});
+
+test("collapsed sidebar dividers disappear when all items in a group are hidden", () => {
+  assert.match(source, /const updateRailDividers = \(root\) =>/);
+  assert.match(source, /updateRailDividers\(record\.root\)/);
+  assert.match(source, /item\.getClientRects\(\)\.length > 0/);
+  assert.match(source, /divider\.classList\.toggle\("echo-control-order-sidebar-group-hidden", !hasVisibleItem\)/);
+});
+
+test("marketplace repository button points to the plugin directory", () => {
+  const entry = catalog.plugins.find(({ id }) => id === "playback-control-order");
+  assert.equal(entry.repo, entry.homepage);
 });
 
 test("playback control order moves items using the pre-removal drop index", () => {

@@ -112,7 +112,7 @@
     {
       "id": "playback-control-order",
       "path": "playback-control-order",
-      "repo": "https://github.com/hoowhoami/EchoMusicPlugins",
+      "repo": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/playback-control-order",
       "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/playback-control-order",
       "tags": [
         "player",
