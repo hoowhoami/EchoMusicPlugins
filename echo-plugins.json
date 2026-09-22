@@ -479,6 +479,21 @@
         "productivity",
         "player"
       ]
+    },
+    {
+      "id": "github-accelerator",
+      "name": "GitHub 加速源",
+      "description": "为 EchoMusic 更新与插件下载提供 GitHub 公益加速源选择、测速与一键应用（移植自 XIU2 Github Enhancement，GPL-3.0）。",
+      "author": "T-T2333",
+      "path": "",
+      "repo": "https://github.com/T-T2333/github-accelerator",
+      "homepage": "https://github.com/T-T2333/github-accelerator",
+      "tags": [
+        "network",
+        "accelerator",
+        "update",
+        "plugin-marketplace"
+      ]
     }
   ]
 }
