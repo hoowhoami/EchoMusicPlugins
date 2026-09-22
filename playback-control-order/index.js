@@ -24,7 +24,6 @@ const ZONE_IDS = ["left", "before", "after", "right"];
 export const SIDEBAR_GROUPS = Object.freeze({
   discover: {
     title: "发现音乐",
-    description: "只在“发现音乐”分类内调整顺序。",
     items: [
       ["home", "为您推荐"],
       ["explore", "探索发现"],
@@ -32,7 +31,6 @@ export const SIDEBAR_GROUPS = Object.freeze({
   },
   library: {
     title: "我的乐库",
-    description: "只在“我的乐库”分类内调整顺序。",
     items: [
       ["favorites", "我最喜爱"],
       ["personal-fm", "私人 FM"],
@@ -43,7 +41,6 @@ export const SIDEBAR_GROUPS = Object.freeze({
   },
   playlists: {
     title: "歌单",
-    description: "单独控制歌单类；固定歌单项仍可分别隐藏，用户歌单仍由主程序管理。",
     items: [
       ["defaultFavorite", "默认收藏"],
       ["likedPlaylist", "我喜欢"],
@@ -637,6 +634,20 @@ const applyPlaylistSidebarGroup = (record) => {
   railGroup?.classList.toggle("echo-control-order-sidebar-group-hidden", !settings.visible);
 };
 
+const updateRailDividers = (root) => {
+  const rail = root.querySelector(".sidebar-rail-nav");
+  if (!rail) return;
+  for (const divider of rail.querySelectorAll(":scope > .sidebar-rail-divider")) {
+    let item = divider.nextElementSibling;
+    let hasVisibleItem = false;
+    while (item && !item.classList.contains("sidebar-rail-divider")) {
+      if (item.getClientRects().length > 0) hasVisibleItem = true;
+      item = item.nextElementSibling;
+    }
+    divider.classList.toggle("echo-control-order-sidebar-group-hidden", !hasVisibleItem);
+  }
+};
+
 const restoreSidebar = (record) => {
   record.timer && window.clearTimeout(record.timer);
   for (const [parent, children] of record.snapshots) {
@@ -666,6 +677,7 @@ const applySidebarLayout = (record) => {
   }
   for (const groupId of ["discover", "library"]) applySidebarGroup(record, groupId);
   applyPlaylistSidebarGroup(record);
+  updateRailDividers(record.root);
 };
 
 const scheduleSidebarApply = (record) => {
@@ -790,15 +802,22 @@ const sidebarIconMarkup = (label) => {
 
 const SETTINGS_CSS = `
 .echo-control-order-settings { display: grid; gap: 16px; container: echo-control-order-settings / inline-size; }
-.echo-control-order-settings .echo-control-order-header { display: grid; gap: 5px; }
+.echo-control-order-settings .echo-control-order-header,
+.echo-control-order-settings .echo-control-order-section-heading,
+.echo-control-order-settings .echo-control-order-page-heading { display: flex; align-items: baseline; justify-content: flex-start; flex-wrap: wrap; gap: 6px 14px; }
 .echo-control-order-settings .echo-control-order-title { color: var(--color-text-main); font-size: 16px; font-weight: 850; }
+.echo-control-order-settings .echo-control-order-title,
+.echo-control-order-settings .echo-control-order-section-title,
+.echo-control-order-settings .echo-control-order-page-title { flex: 0 0 auto; }
 .echo-control-order-settings .echo-control-order-hint,
 .echo-control-order-settings .echo-control-order-description { color: color-mix(in srgb, var(--color-text-main) 56%, transparent); font-size: 11px; line-height: 1.5; }
 .echo-control-order-settings .echo-control-order-section { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--border-subtle); border-radius: 16px; background: var(--control-muted-bg); }
-.echo-control-order-settings .echo-control-order-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .echo-control-order-settings .echo-control-order-section-title { color: var(--color-text-main); font-size: 14px; font-weight: 850; }
-.echo-control-order-settings .echo-control-order-sidebar-groups { display: grid; gap: 10px; }
-.echo-control-order-settings .echo-control-order-sidebar-group { display: grid; gap: 7px; padding: 10px; border: 1px solid var(--border-subtle); border-radius: 12px; background: color-mix(in srgb, var(--color-bg-elevated) 58%, transparent); }
+.echo-control-order-settings .echo-control-order-sidebar-groups { display: grid; grid-template-columns: repeat(3, 220px); grid-template-areas: "discover library playlists"; align-content: start; align-items: start; justify-content: center; gap: 10px; }
+.echo-control-order-settings .echo-control-order-sidebar-group { display: grid; align-content: start; min-width: 0; gap: 7px; padding: 10px; border: 1px solid var(--border-subtle); border-radius: 12px; background: color-mix(in srgb, var(--color-bg-elevated) 58%, transparent); }
+.echo-control-order-settings .echo-control-order-sidebar-group-discover { grid-area: discover; }
+.echo-control-order-settings .echo-control-order-sidebar-group-library { grid-area: library; }
+.echo-control-order-settings .echo-control-order-sidebar-group-playlists { grid-area: playlists; }
 .echo-control-order-settings .echo-control-order-sidebar-group-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .echo-control-order-settings .echo-control-order-sidebar-group-title { color: color-mix(in srgb, var(--color-text-main) 76%, transparent); font-size: 11px; font-weight: 850; }
 .echo-control-order-settings .echo-control-order-sidebar-group-switch { display: flex; align-items: center; gap: 7px; color: color-mix(in srgb, var(--color-text-main) 62%, transparent); font-size: 10px; font-weight: 700; }
@@ -809,6 +828,12 @@ const SETTINGS_CSS = `
 .echo-control-order-settings .echo-control-order-sidebar-item .echo-control-order-icon { width: 20px; height: 20px; display: grid; place-items: center; flex: 0 0 20px; color: var(--color-primary-text); }
 .echo-control-order-settings .echo-control-order-sidebar-item .echo-control-order-icon svg { width: 18px; height: 18px; }
 .echo-control-order-settings .echo-control-order-sidebar-state { margin-left: auto; color: color-mix(in srgb, var(--color-text-main) 48%, transparent); font-size: 10px; }
+@container echo-control-order-settings (max-width: 740px) {
+  .echo-control-order-settings .echo-control-order-sidebar-groups { grid-template-columns: repeat(2, 220px); grid-template-areas: "library discover" "library playlists"; grid-template-rows: min-content min-content; }
+}
+@container echo-control-order-settings (max-width: 500px) {
+  .echo-control-order-settings .echo-control-order-sidebar-groups { grid-template-columns: minmax(0, 220px); grid-template-areas: "discover" "library" "playlists"; grid-template-rows: none; }
+}
 .echo-control-order-settings .echo-control-order-page { display: grid; gap: 10px; }
 .echo-control-order-settings .echo-control-order-page-title { color: var(--color-text-main); font-size: 13px; font-weight: 850; }
 .plugin-settings-dialog:has(.echo-control-order-settings) { left: var(--echo-settings-left, 2vw) !important; top: var(--echo-settings-top, 3vh) !important; right: auto !important; bottom: auto !important; width: var(--echo-settings-width, 96vw) !important; max-width: none !important; height: var(--echo-settings-height, 94vh) !important; max-height: none !important; margin: 0 !important; transform: none !important; box-sizing: border-box !important; }
@@ -1191,7 +1216,7 @@ const createSettingsComponent = (ctx) => {
       const renderSidebarGroup = (groupId) => {
         const meta = SIDEBAR_GROUPS[groupId];
         const group = draft.sidebar[groupId];
-        return h("div", { class: "echo-control-order-sidebar-group", key: groupId }, [
+        return h("div", { class: ["echo-control-order-sidebar-group", `echo-control-order-sidebar-group-${groupId}`], key: groupId }, [
           h("div", { class: "echo-control-order-sidebar-group-heading" }, [
             h("div", { class: "echo-control-order-sidebar-group-title" }, meta.title),
             groupId === "playlists"
@@ -1204,7 +1229,6 @@ const createSettingsComponent = (ctx) => {
                 ])
               : null,
           ]),
-          h("div", { class: "echo-control-order-description" }, meta.description),
           h(
             "div",
             {
@@ -1278,8 +1302,10 @@ const createSettingsComponent = (ctx) => {
 
       const renderControlPage = (pageId) =>
         h("section", { class: "echo-control-order-page", key: pageId }, [
-          h("div", { class: "echo-control-order-page-title" }, pageId === "home" ? "首页播放控件" : "播放器页控件"),
-          h("div", { class: "echo-control-order-hint" }, "点击图标切换显示状态：亮色为启用，虚影为停用；拖动图标可在左、中、右区域内排序。"),
+          h("div", { class: "echo-control-order-page-heading" }, [
+            h("div", { class: "echo-control-order-page-title" }, pageId === "home" ? "首页播放控件" : "播放器页控件"),
+            h("div", { class: "echo-control-order-hint" }, "点击图标切换显示状态：亮色为启用，虚影为停用；拖动图标可在左、中、右区域内排序。"),
+          ]),
           h("div", { class: "echo-control-order-control-preview" }, [
             h("div", { class: "echo-control-order-track", style: { gridTemplateColumns: controlLayout(pageId).track } }, [
               h("div", { class: "echo-control-order-column echo-control-order-column-left" }, [
@@ -1326,7 +1352,7 @@ const createSettingsComponent = (ctx) => {
           h("section", { class: "echo-control-order-section" }, [
             h("div", { class: "echo-control-order-section-heading" }, [
               h("div", { class: "echo-control-order-section-title" }, "侧边栏"),
-              h("div", { class: "echo-control-order-hint" }, "同一分类内拖动，不能跨分类。"),
+              h("div", { class: "echo-control-order-hint" }, "点击项目切换显示（亮色显示、灰色隐藏）；按住拖动可在同一分类内排序，不能跨分类。歌单总开关控制整个歌单区，固定歌单可单独隐藏，自建歌单由主程序管理。"),
             ]),
             h("div", { class: "echo-control-order-sidebar-groups" }, SIDEBAR_GROUP_IDS.map(renderSidebarGroup)),
           ]),
