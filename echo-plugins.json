@@ -407,7 +407,7 @@
       "id": "echo-remote",
       "name": "局域网远程遥控",
       "description": "通过局域网 WebUI 遥控 EchoMusic,支持进度拖拽、切歌、音量、歌曲信息与封面显示",
-      "author": "yuanqian",
+      "author": "yuanqian, lm379",
       "path": "",
       "repo": "https://github.com/yuanqian108/echo-remote",
       "homepage": "https://github.com/yuanqian108/echo-remote",
