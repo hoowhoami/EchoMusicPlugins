@@ -17,6 +17,7 @@ https://github.com/hoowhoami/EchoMusicPlugins
 - [完整插件开发指南](docs/plugin-development.md)：Manifest、生命周期、宿主 API、安全模式和完整 UI 接入示例。
 - [独立浮窗与 Now Playing](docs/floating-windows.md)：浮窗声明、播放快照、宿主窗口控制、拖动与缩放。
 - [标题栏 API](docs/titlebar.md)：统一操作注册、默认位置、用户布局、Tooltip 与生命周期。
+- [播放栏 API](docs/playerbar.md)：注册播放栏与歌词页底部控制操作，支持用户布局、更多菜单、徽标和交互语义。
 - [任务中心 API](docs/tasks.md)：后台任务、进度、中止信号与终态保留策略。
 - [备份与恢复 API](docs/backups.md)：命令式备份操作、存储提供方注册与 WebDAV 示例。
 - [Graphics 绘图 API](/docs/graphics.md)：为插件提供绘图能力。

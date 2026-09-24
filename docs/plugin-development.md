@@ -103,6 +103,7 @@ EchoMusic 支持在线插件源和本地插件。用户可以在"插件管理"�
 扩展文档：
 
 - [标题栏 API](titlebar.md)：注册全局菜单入口，支持排序、动态显示与禁用、异步操作和自动清理。
+- [播放栏 API](playerbar.md)：注册播放栏与歌词页底部控制操作，支持默认位置、用户布局、更多菜单、徽标和点击/悬停交互语义。
 - [任务中心 API](tasks.md)：注册后台任务或待操作任务、展示明细与操作按钮、更新进度、处理中止信号，并定义完成、失败和中止后的保留策略。
 - [独立浮窗与 Now Playing](floating-windows.md)：声明独立桌面浮窗、订阅当前播放/歌词快照、发送播放与歌词命令，并接入统一拖动与缩放交互。
 - [备份与恢复 API](backups.md)：创建、检查和恢复备份，以及将 WebDAV 等存储提供方接入主程序设置页。
@@ -394,6 +395,7 @@ export default {
 | `ctx.ui.settings.define(options)`                                     | 声明插件设置入口，必须提供自定义 Vue 组件                                                                                                                                                                                                                                                                                                                                                                     |
 | `ctx.ui.sidebar.addItem(item)`                                        | 注册正式侧边栏导航入口，支持路由匹配、高亮和折叠侧栏图标                                                                                                                                                                                                                                                                                                                                                      |
 | `ctx.ui.titlebar.register(item)` | 注册标题栏操作，支持默认顶栏/更多位置与统一 Tooltip；返回清理函数，详见 [标题栏 API](titlebar.md) |
+| `ctx.ui.playerbar.register(item)` | 注册播放栏和歌词页底部控制操作，支持默认左/中/右/更多位置、用户拖拽布局、徽标与交互触发语义；返回清理函数，详见 [播放栏 API](playerbar.md) |
 | `ctx.ui.cover.setFallback(resolver)`                                  | 设置无封面或封面加载失败时的兜底图片 URL，resolver 必须同步返回字符串；resolver 会收到包含尺寸、来源信息和当前主题色的 `context`，详见下文「封面兜底」                                                                                                                                                                                                                                                                                                         |
 | `ctx.ui.components`                                                   | 异步加载宿主 UI 组件，键为文件名（不含扩展名）；目前覆盖 `ui/`（基础控件）、`music/`（音乐业务组件）、`player/`（播放器弹层）三类，后续新增自动出现。调用方式：`defineAsyncComponent(ctx.ui.components.Button)` 或 `await ctx.ui.components.Button()`。同名组件按目录优先级合并：`ui` > `music` > `player`。                                                                                                      |
 | `ctx.icons`                                                           | 宿主图标库（Iconify 格式）                                                                                                                                                                                                                                                                                                                                                                                    |
@@ -1563,6 +1565,7 @@ const coverUrl = ctx.cover.createThemedIconCoverUrl({
 - `ctx.ui.addPage(...)`：注册完整插件页面，可通过 `/main/plugin/:pluginId/:pageId` 访问；传入 `sidebar` 后会同时注册正式侧边栏入口。
 - `ctx.ui.sidebar.addItem(...)`：为插件页面或自定义动作注册正式侧边栏导航入口，支持路由匹配、高亮和折叠侧栏图标。
 - `ctx.ui.settings.define(...)`：声明插件设置入口，传入自定义 Vue 组件自由渲染。
+- `ctx.ui.playerbar.register(...)`：注册播放栏与歌词页底部控制操作，交由宿主处理布局、更多菜单、徽标和自动清理。
 - `ctx.ui.cover.setFallback(...)`：设置无封面或封面加载失败时的显示图片。
 - `ctx.cover.createThemedIconCoverUrl(...)`：生成 EchoMusic 内置风格的主题色图标封面。
 - `ctx.ui.addSongContextMenuItem(...)`：注册歌曲右键菜单项。
@@ -2352,27 +2355,18 @@ const skin = ctx.ui.lyricsPage.useSkin();
 
 ## 完整 UI 接入示例
 
-把组件插入播放器右侧：
+把操作注册到播放栏：
 
 ```js
 export function activate(ctx) {
-  const Badge = ctx.vue.defineComponent({
-    setup() {
-      return () =>
-        ctx.vue.h(
-          "button",
-          {
-            class: "my-plugin-badge",
-            onClick: () => ctx.toast.info("插件按钮"),
-          },
-          "插件",
-        );
-    },
-  });
-
-  ctx.ui.mount(".player-actions", Badge, {
-    id: "playerbar-badge",
-    position: "prepend",
+  ctx.ui.playerbar.register({
+    id: "open-panel",
+    title: "插件面板",
+    icon: "tabler:music-cog",
+    defaultPlacement: "more",
+    badge: () => "3",
+    badgeTitle: "插件消息",
+    onClick: () => ctx.toast.info("插件按钮"),
   });
 }
 ```
