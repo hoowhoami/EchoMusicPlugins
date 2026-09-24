@@ -24,7 +24,7 @@ https://github.com/hoowhoami/EchoMusicPlugins
 - [本地 Web 服务与 WebSocket](docs/web-server.md)：本机 HTTP 页面/接口，以及同一端口上的 WebSocket。
 - [TCP 网络 API](docs/tcp.md)：主进程 TCP 连接、AbortSignal、半关闭与 keepalive。
 - [`openrgb`](openrgb)：独立的 OpenRGB 音乐灯效，支持频谱铺展、音量律动与低频节拍。
-- [`mv-enhancer`](mv-enhancer)：上下排列多个完整 MV 详情，并集中选择默认视频编码与分辨率。
+- [`mv-enhancer`](mv-enhancer)：横向拖动浏览紧凑的 MV 版本卡片，优先选择最高画质 H.265，无法确认歌曲关联时保留原 MV 页面。
 - [`playback-control-order`](playback-control-order)：统一管理侧边栏、首页播放栏和播放器页控制栏的显示、隐藏与排序。
 - [`webdav-backup`](webdav-backup)：将主程序备份与恢复界面接入用户自己的 WebDAV 存储。
 - [`example-plugin`](example-plugin)：覆盖常用宿主能力的综合示例。
