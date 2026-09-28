@@ -494,6 +494,17 @@
         "update",
         "plugin-marketplace"
       ]
+    },
+    {
+      "id": "kugou-checkin",
+      "path": "kugou-checkin",
+      "repo": "https://github.com/rurucxk/echomusic-kugou-checkin-source",
+      "homepage": "https://github.com/rurucxk/echomusic-kugou-checkin-source",
+      "tags": [
+        "kugou",
+        "checkin",
+        "vip"
+      ]
     }
   ]
 }
