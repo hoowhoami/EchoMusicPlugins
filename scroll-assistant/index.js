@@ -10,8 +10,8 @@ const STYLE = `
 .echo-scroll-assistant-position {
   --echo-scroll-assistant-stack-y: 0px;
   position: fixed;
-  width: 36px;
-  height: 36px;
+  width: var(--scroll-action-size, 32px);
+  height: var(--scroll-action-size, 32px);
   z-index: 1050;
   transform: translateY(var(--echo-scroll-assistant-stack-y));
   transition:
@@ -29,7 +29,7 @@ const STYLE = `
   align-items: center;
   justify-content: center;
   border: 1px solid var(--control-border);
-  border-radius: 999px;
+  border-radius: var(--radius-control, 6px);
   color: var(--color-text-main);
   background: var(--color-bg-elevated);
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.14);
@@ -46,7 +46,7 @@ const STYLE = `
 }
 
 .echo-scroll-assistant-button:hover {
-  color: var(--color-primary);
+  color: var(--color-primary-text);
   border-color: color-mix(in srgb, var(--color-primary) 60%, var(--control-border));
   box-shadow: 0 16px 36px rgba(15, 23, 42, 0.18);
   --echo-scroll-assistant-hover-y: -1px;
@@ -496,8 +496,8 @@ const createFloatingButton = (ctx) => {
                                 h(Icon, {
                                   class: "echo-scroll-assistant-button-icon",
                                   icon: ctx.icons.iconArrowDown,
-                                  width: 18,
-                                  height: 18,
+                                  width: 16,
+                                  height: 16,
                                 }),
                               ],
                             ),
