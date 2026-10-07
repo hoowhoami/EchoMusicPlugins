@@ -1,7 +1,7 @@
 {
   "id": "openrgb",
   "name": "OpenRGB 音乐灯效",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "将 EchoMusic 当前播放的音乐映射到 OpenRGB 灯光设备，支持频谱铺展、音量律动和低频节拍。",
   "author": "EchoMusic",
   "icon": "icon.svg",

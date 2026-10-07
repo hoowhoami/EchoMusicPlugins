@@ -989,7 +989,6 @@ const STYLE = `
 .orgb-settings .orgb-select { width: 100%; min-height: 40px; background: var(--control-bg); border-color: var(--orgb-control-border); font-weight: 500; }
 .orgb-settings .orgb-field .slider-root-horizontal .orgb-slider-track { height: 6px; background: color-mix(in srgb, var(--color-text-main) 50%, var(--surface-card-base)); }
 .orgb-settings .orgb-slider-range { background: var(--color-primary-text, var(--color-primary)); }
-.orgb-settings .orgb-slider-thumb { width: 16px; height: 16px; background: var(--control-thumb-bg); border: 2px solid var(--color-primary-text, var(--color-primary)); }
 .orgb-settings :is(input, button, [role=combobox], [role=slider]):focus-visible { outline: 2px solid var(--color-primary-text, var(--color-primary)) !important; outline-offset: 3px; }
 .orgb-settings :disabled { opacity: .55; cursor: not-allowed; }
 .orgb-actions { display: flex; flex-wrap: wrap; gap: 9px; margin: 10px 0 16px; }
