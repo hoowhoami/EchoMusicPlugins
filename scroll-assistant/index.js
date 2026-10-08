@@ -28,7 +28,7 @@ const STYLE = `
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--control-border);
+  border: 1px solid var(--scroll-action-border, color-mix(in srgb, var(--color-text-main) 26%, transparent));
   border-radius: var(--radius-control, 6px);
   color: var(--color-text-main);
   background: var(--color-bg-elevated);
@@ -47,7 +47,7 @@ const STYLE = `
 
 .echo-scroll-assistant-button:hover {
   color: var(--color-primary-text);
-  border-color: color-mix(in srgb, var(--color-primary) 60%, var(--control-border));
+  border-color: color-mix(in srgb, var(--color-primary) 60%, var(--scroll-action-border, color-mix(in srgb, var(--color-text-main) 26%, transparent)));
   box-shadow: 0 16px 36px rgba(15, 23, 42, 0.18);
   --echo-scroll-assistant-hover-y: -1px;
 }
@@ -71,12 +71,11 @@ body:has(.lyric-page) .echo-scroll-assistant-position {
 }
 
 .dark .echo-scroll-assistant-button {
-  border-color: rgba(255, 255, 255, 0.26);
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
 }
 
 .dark .echo-scroll-assistant-button:hover {
-  border-color: color-mix(in srgb, var(--color-primary) 58%, rgba(255, 255, 255, 0.26));
+  border-color: color-mix(in srgb, var(--color-primary) 58%, var(--scroll-action-border, color-mix(in srgb, var(--color-text-main) 26%, transparent)));
 }
 
 .echo-scroll-assistant-fade-enter-active,
