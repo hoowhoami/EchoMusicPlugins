@@ -500,6 +500,17 @@
         "theme",
         "dynamic"
       ]
+    },
+    {
+      "id": "taskbar-lyrics",
+      "path": "taskbar-lyrics",
+      "repo": "https://github.com/CarsonGame/EchoMusic-TaskbarLyrics",
+      "homepage": "https://github.com/CarsonGame/EchoMusic-TaskbarLyrics",
+      "tags": [
+        "lyrics",
+        "taskbar",
+        "windows"
+      ]
     }
   ]
 }
