@@ -28,15 +28,16 @@ const STYLE = `
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--scroll-action-border, color-mix(in srgb, var(--color-text-main) 26%, transparent));
+  border: 1px solid var(--scroll-action-border, color-mix(in srgb, var(--color-text-main) 22%, transparent));
   border-radius: var(--radius-control, 6px);
-  color: var(--color-text-main);
-  background: var(--color-bg-elevated);
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.14);
+  color: var(--scroll-action-text, var(--icon-main, var(--color-text-main)));
+  background: var(--scroll-action-bg, var(--control-muted-bg, transparent));
+  box-shadow: var(--control-neutral-action-shadow, none);
   -webkit-backdrop-filter: var(--surface-backdrop-filter);
   backdrop-filter: var(--surface-backdrop-filter);
   cursor: pointer;
   transition:
+    background-color var(--motion-duration-fast, 120ms) var(--motion-ease-standard, ease),
     color var(--motion-duration-fast, 120ms) var(--motion-ease-standard, ease),
     border-color var(--motion-duration-fast, 120ms) var(--motion-ease-standard, ease),
     box-shadow var(--motion-duration-fast, 120ms) var(--motion-ease-standard, ease),
@@ -45,10 +46,10 @@ const STYLE = `
     scale(var(--echo-scroll-assistant-active-scale));
 }
 
-.echo-scroll-assistant-button:hover {
-  color: var(--color-primary-text);
-  border-color: color-mix(in srgb, var(--color-primary) 60%, var(--scroll-action-border, color-mix(in srgb, var(--color-text-main) 26%, transparent)));
-  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.18);
+.echo-scroll-assistant-button:is(:hover, :focus-visible) {
+  color: var(--scroll-action-hover-text, var(--color-text-main));
+  background: var(--scroll-action-hover-bg, var(--control-hover-bg, transparent));
+  border-color: var(--scroll-action-hover-border, color-mix(in srgb, var(--color-text-main) 36%, transparent));
   --echo-scroll-assistant-hover-y: -1px;
 }
 
@@ -59,6 +60,7 @@ body:has(.lyric-page) .echo-scroll-assistant-position {
 }
 
 .echo-scroll-assistant-button:active {
+  background: var(--scroll-action-pressed-bg, var(--control-neutral-pressed-bg, transparent));
   --echo-scroll-assistant-active-scale: 0.96;
 }
 
@@ -68,14 +70,6 @@ body:has(.lyric-page) .echo-scroll-assistant-position {
 
 .echo-scroll-assistant-button:hover .echo-scroll-assistant-button-icon {
   transform: translateY(2px);
-}
-
-.dark .echo-scroll-assistant-button {
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
-}
-
-.dark .echo-scroll-assistant-button:hover {
-  border-color: color-mix(in srgb, var(--color-primary) 58%, var(--scroll-action-border, color-mix(in srgb, var(--color-text-main) 26%, transparent)));
 }
 
 .echo-scroll-assistant-fade-enter-active,
