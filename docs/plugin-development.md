@@ -2,6 +2,8 @@
 
 本文档说明 EchoMusic 插件的 Manifest、生命周期、宿主 API、安全边界和完整接入示例。官方插件源和示例插件位于 [EchoMusicPlugins 仓库](../README.md)。
 
+持久目录授权、无 UI 下载服务、本地媒体及离线资源接入见 [文件授权与下载 API](files-and-downloads.md)。
+
 通用 WebGPU 绘图、动画、画布生命周期及可选 HDR 输出见 [Graphics 插件绘图 API](graphics.md)。本地 HTTP / WebSocket 服务见 [本地 Web 服务与 WebSocket](web-server.md)。
 
 ## 插件系统定位
@@ -321,7 +323,7 @@ export default {
 };
 ```
 
-如果要使用 TypeScript、Vue SFC 或第三方依赖，请自行将插件打包为单文件 ESM，再放入插件目录。
+如果要使用 TypeScript、Vue SFC 或第三方依赖，请自行将插件打包为单文件 ESM，再放入插件目录。入口通过 Blob URL 加载，运行时的 `import './helper.js'` 不会相对于插件目录解析；本地模块也必须打包进最终入口，或把函数直接写在入口中。
 
 ## 可用上下文
 

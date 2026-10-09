@@ -20,7 +20,8 @@ https://github.com/hoowhoami/EchoMusicPlugins
 - [播放栏 API](docs/playerbar.md)：注册播放栏与歌词页底部控制操作，支持用户布局、更多菜单、徽标和交互语义。
 - [全局主题 API](docs/themes.md)：可选择主题、语义配色、主题设置与装饰层。
 - [侧栏快捷卡片 API](docs/sidebar-shortcuts.md)：增加候选卡片，用户独立增删和排序。
-- [全局主题示例](app-theme-example)：晨雾、暮色和主题工作台候选卡片。
+- [视频主题示例](app-theme-example)：外置视频、本地文件授权、下载与离线播放。
+- [文件授权与下载 API](docs/files-and-downloads.md)：持久目录、私有存储、流式下载/复制、恢复与本地媒体读取。
 - [任务中心 API](docs/tasks.md)：后台任务、进度、中止信号与终态保留策略。
 - [备份与恢复 API](docs/backups.md)：命令式备份操作、存储提供方注册与 WebDAV 示例。
 - [Graphics 绘图 API](/docs/graphics.md)：为插件提供绘图能力。

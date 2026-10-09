@@ -1,10 +1,16 @@
 {
   "id": "app-theme-example",
-  "name": "全局主题与快捷卡片示例",
-  "version": "1.0.0",
-  "description": "演示可选择的晨雾、暮色主题、主题设置、背景装饰及侧栏候选卡片。",
+  "name": "视频主题示例",
+  "version": "1.1.0",
+  "description": "演示外置视频主题：本地文件授权、流式下载、离线播放与背景设置。",
   "author": "EchoMusic",
   "main": "index.js",
-  "capabilities": { "theme": true },
-  "requires": { "echoMusicVersion": ">=2.3.2-beta.7" }
+  "capabilities": {
+    "theme": true,
+    "localFiles": true,
+    "downloads": true
+  },
+  "requires": {
+    "echoMusicVersion": ">=2.3.2-beta.10"
+  }
 }
