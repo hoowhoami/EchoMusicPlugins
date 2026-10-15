@@ -1,0 +1,32 @@
+{
+  "id": "comment-badges",
+  "name": "会员徽章样式优化",
+  "version": "0.0.6",
+  "description": "优化会员徽章，采用酷狗官方图标样式",
+  "author": "stinaCN",
+  "icon": "icon.svg",
+  "main": "index.js",
+  "capabilities": {
+    "localFiles": true,
+    "serverIntercept": true
+  },
+  "requires": {
+    "echoMusicVersion": ">=2.3.2-beta.13"
+  },
+  "assets": {
+    "file": "assets.bin",
+    "files": [
+      "icons/changting.webp",
+      "icons/concept-year.webp",
+      "icons/concept.webp",
+      "icons/music-year.webp",
+      "icons/music.webp",
+      "icons/qvip.webp",
+      "icons/svip-year.webp",
+      "icons/svip.webp",
+      "icons/vip-year.webp",
+      "icons/vip.webp",
+      "icons/wvip.webp"
+    ]
+  }
+}

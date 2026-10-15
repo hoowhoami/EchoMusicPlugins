@@ -511,6 +511,16 @@
         "taskbar",
         "windows"
       ]
+    },
+    {
+      "id": "comment-badges",
+      "path": "comment-badges",
+      "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/comment-badges",
+      "tags": [
+        "appearance",
+        "comment",
+        "badge"
+      ]
     }
   ]
 }
