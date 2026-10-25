@@ -1,0 +1,15 @@
+{
+  "id": "auto-daily-vip",
+  "name": "每日自动领取 VIP",
+  "version": "1.0.0",
+  "description": "登录 EchoMusic 后自动领取酷狗概念版每日畅听 VIP 与概念会员，无需手机端点歌领取。",
+  "author": "local",
+  "main": "index.js",
+  "capabilities": {
+    "unrestrictedNetwork": true,
+    "kugouApi": true
+  },
+  "requires": {
+    "echoMusicVersion": ">=2.3.0"
+  }
+}
