@@ -554,6 +554,17 @@
         "smartisan",
         "theme"
       ]
+    },
+    {
+      "id": "public-song-fallback",
+      "path": "public-song-fallback",
+      "repo": "https://github.com/CarsonGame/EchoMusicPlugins",
+      "homepage": "https://github.com/CarsonGame/EchoMusicPlugins/tree/main/public-song-fallback",
+      "tags": [
+        "audio-source",
+        "mv",
+        "lyrics"
+      ]
     }
   ]
 }
