@@ -1,7 +1,7 @@
 {
   "name": "EchoMusic 官方插件源",
   "homepage": "https://github.com/hoowhoami/EchoMusicPlugins",
-  "plugins": [   
+  "plugins": [
     {
       "id": "echo-acrylic",
       "name": "亚克力分层材质",
@@ -12,7 +12,6 @@
       "homepage": "https://github.com/qaz2070/echo-acrylic",
       "tags": ["appearance", "acrylic", "glass", "ui"]
     },
-
     {
       "id": "example-plugin",
       "path": "example-plugin",
