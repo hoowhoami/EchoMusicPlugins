@@ -554,6 +554,18 @@
         "smartisan",
         "theme"
       ]
+    },
+    {
+      "id": "echo-menu-lyrics",
+      "repo": "https://github.com/whuyfk/echo-menu-lyrics",
+      "path": "packages/echo-menu-lyrics",
+      "homepage": "https://github.com/whuyfk/echo-menu-lyrics",
+      "tags": [
+        "lyrics",
+        "macos",
+        "menu-bar",
+        "now-playing"
+      ]
     }
   ]
 }
