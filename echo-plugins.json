@@ -3,6 +3,16 @@
   "homepage": "https://github.com/hoowhoami/EchoMusicPlugins",
   "plugins": [
     {
+      "id": "echo-acrylic",
+      "name": "亚克力分层材质",
+      "description": "给按钮、卡片、列表行、播放栏等可交互元素铺一层染色亚克力板材（半透明 + 背后磨砂 + 主题色染色），不改背景与壁纸。四组分区各自可开关，并可独立调颜色、浓度、磨砂。",
+      "author": "小爱",
+      "path": "",
+      "repo": "https://github.com/qaz2070/echo-acrylic",
+      "homepage": "https://github.com/qaz2070/echo-acrylic",
+      "tags": ["appearance", "acrylic", "glass", "ui"]
+    },
+    {
       "id": "example-plugin",
       "path": "example-plugin",
       "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/example-plugin",
