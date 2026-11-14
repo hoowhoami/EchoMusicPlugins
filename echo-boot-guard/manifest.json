@@ -1,0 +1,13 @@
+{
+  "id": "echo-boot-guard",
+  "name": "开机自启管家",
+  "version": "1.7.0",
+  "description": "本周期已签到，开机自启后自动退出应用，配合「自动组队领VIP」使用。",
+  "author": "C.H.I.N.A",
+  "icon": "icon.png",
+  "main": "index.js",
+  "requires": {
+    "echoMusicVersion": ">=2.3.0"
+  },
+  "capabilities": {}
+}
