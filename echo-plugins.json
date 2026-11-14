@@ -576,6 +576,26 @@
         "menu-bar",
         "now-playing"
       ]
+    },
+    {
+      "id": "echo-audiobook-search",
+      "path": "echo-audiobook-search",
+      "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/echo-audiobook-search",
+      "tags": [
+        "search",
+        "audiobook",
+        "longaudio"
+      ]
+    },
+    {
+      "id": "echo-boot-guard",
+      "path": "echo-boot-guard",
+      "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/echo-boot-guard",
+      "tags": [
+        "productivity",
+        "autostart",
+        "startup"
+      ]
     }
   ]
 }

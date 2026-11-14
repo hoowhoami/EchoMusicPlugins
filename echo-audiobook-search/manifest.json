@@ -1,0 +1,15 @@
+{
+  "id": "echo-audiobook-search",
+  "name": "听书搜索助手",
+  "version": "0.2.3",
+  "description": "让「专辑」搜索能找到有声书，点进去沿用原有的专辑页收听。",
+  "author": "C.H.I.N.A",
+  "icon": "icon.png",
+  "main": "index.js",
+  "requires": {
+    "echoMusicVersion": ">=2.3.0"
+  },
+  "capabilities": {
+    "serverIntercept": true
+  }
+}
