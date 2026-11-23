@@ -576,6 +576,21 @@
         "menu-bar",
         "now-playing"
       ]
+    },
+    {
+      "id": "concept-version-style",
+      "name": "概念版风格",
+      "description": "修复了酷狗概念版没有pc端的bug（）",
+      "author": "尹东安",
+      "path": "",
+      "repo": "https://github.com/yda0412/concept-version-style",
+      "homepage": "https://github.com/yda0412/concept-version-style",
+      "tags": [
+        "appearance",
+        "theme",
+        "player",
+        "lyrics"
+      ]
     }
   ]
 }
