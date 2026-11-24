@@ -591,6 +591,20 @@
         "player",
         "lyrics"
       ]
+    },
+    {
+      "id": "threaded-comments",
+      "name": "评论区树状显示",
+      "description": "把歌曲评论的楼层回复按回复关系缩进成树，带连线引导与分支折叠，新回复按加载先后排列。",
+      "author": "susulqx",
+      "path": "",
+      "repo": "https://github.com/susulqx/EchoMusic-Threaded-comments",
+      "homepage": "https://github.com/susulqx/EchoMusic-Threaded-comments",
+      "tags": [
+        "comment",
+        "appearance",
+        "ui"
+      ]
     }
   ]
 }
