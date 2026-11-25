@@ -10,7 +10,12 @@
       "path": "",
       "repo": "https://github.com/qaz2070/echo-acrylic",
       "homepage": "https://github.com/qaz2070/echo-acrylic",
-      "tags": ["appearance", "acrylic", "glass", "ui"]
+      "tags": [
+        "appearance",
+        "acrylic",
+        "glass",
+        "ui"
+      ]
     },
     {
       "id": "example-plugin",
@@ -604,6 +609,17 @@
         "comment",
         "appearance",
         "ui"
+      ]
+    },
+    {
+      "id": "echo-music-downloader",
+      "path": "",
+      "repo": "https://github.com/bayueqi/ZQ-EchoDown",
+      "homepage": "https://github.com/bayueqi/ZQ-EchoDown",
+      "tags": [
+        "download",
+        "playlist",
+        "offline"
       ]
     }
   ]
