@@ -578,6 +578,21 @@
       ]
     },
     {
+      "id": "concept-version-style",
+      "name": "概念版风格",
+      "description": "修复了酷狗概念版没有pc端的bug（）",
+      "author": "尹东安",
+      "path": "",
+      "repo": "https://github.com/yda0412/concept-version-style",
+      "homepage": "https://github.com/yda0412/concept-version-style",
+      "tags": [
+        "appearance",
+        "theme",
+        "player",
+        "lyrics"
+      ]
+    },
+    {
       "id": "threaded-comments",
       "name": "评论区树状显示",
       "description": "把歌曲评论的楼层回复按回复关系缩进成树，带连线引导与分支折叠，新回复按加载先后排列。",
