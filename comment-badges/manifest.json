@@ -1,7 +1,7 @@
 {
   "id": "comment-badges",
   "name": "会员徽章样式优化",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "优化会员徽章，采用酷狗官方图标样式",
   "author": "stinaCN",
   "icon": "icon.svg",
