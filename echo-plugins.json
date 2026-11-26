@@ -13,6 +13,13 @@
       "tags": ["appearance", "acrylic", "glass", "ui"]
     },
     {
+      "id": "clear-glass-theme",
+      "path": "",
+      "repo": "https://github.com/zhonglixun/echomusic-clear-glass-theme",
+      "homepage": "https://github.com/zhonglixun/echomusic-clear-glass-theme",
+      "tags": ["appearance", "theme", "light", "glass"]
+    },
+    {
       "id": "example-plugin",
       "path": "example-plugin",
       "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/example-plugin",
