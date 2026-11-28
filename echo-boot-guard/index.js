@@ -1,12 +1,14 @@
 /**
- * 开机自启管家 (echo-boot-guard) v1.7.0
+ * 开机自启管家 (echo-boot-guard) v1.8.0
  *
  * 开机自启后：本周期已经签到过、而且用户没在听歌，就安静地退出应用，把内存让出来。
  * 退出之前先静默等一会儿，再弹一张小卡片，卡片上能点「保留」——不想退就点一下。
  *
+ * v1.8.0：启用插件时替用户打开「开机自启动」与「启动时最小化到托盘」（只做一次，之后尊重用户自己的选择）；
+ *         启动窗口到点即止——签到记录要是出现得比窗口还晚，就不再动作。
  * v1.7.0：新老客户端通吃 —— 有开机时长接口就按系统开机时间判断，没有就退回按应用运行时长判断。
  * v1.6.0：改用系统真实开机时长判断“是不是开机自启”，不再看应用自己跑了多久。
- * v1.5.0：去掉总开关；三个时间各给三档（1/5/10 分钟、30/60/90 秒、5/10/15 秒）；播放检查间隔不再出现在设置里。
+ * v1.5.0：去掉总开关；三个时间各给四档（30 秒/1/5/10 分钟、15/30/60/90 秒、3/5/10/15 秒）；播放检查间隔不再出现在设置里。
  * v1.4.0：四个时间改成可直接填写的输入框，超出范围自动夹回。
  * v1.3.0：几个时间都能在设置里改（启动窗口 / 安静等待 / 卡片停留 / 检查间隔）。
  * v1.2.0：加了「启动窗口」，只有应用启动后的头几分钟才介入，重载插件、长时间使用都不会被关。
@@ -19,6 +21,7 @@
 const TRACE_KEY = "plugin:auto-team-vip:lastPeriodId";
 const REC_KEY = "record";
 const SETTINGS_KEY = "settings";
+const AUTOSTART_SEEDED_KEY = "autostartSeeded";
 const WEEK_FIRST_DAY = 3; // 周三
 
 /* 默认值（毫秒/秒都在这里集中） */
@@ -130,7 +133,6 @@ export function isSignedThisPeriod(traceId, rec, wk) {
 
 /** 纯决策：什么时候该退、什么时候别动 */
 export function decide(state) {
-  if (!state.enabled) return "skip-disabled";
   const win = typeof state.bootWindowMs === "number" ? state.bootWindowMs : BOOT_WINDOW_DEFAULT_MS;
   if (state.bootUptimeSec === null || state.bootUptimeSec === undefined) {
     /* 老版本客户端（没有 system:get-boot-info）：退回按应用自身运行时长判断 */
@@ -322,6 +324,22 @@ export async function inspect(ctx) {
   };
 }
 
+/**
+ * 算出「这次启动还能管到什么时候」：激活时刻 + 启动窗口剩下多久 + 安静等待 + 倒计时。
+ * 过了这个时刻一律不再动作，免得签到记录晚出现时，开机几小时后才把应用关掉。
+ * 老版本客户端没有开机时长接口，就用应用自身运行时长凑出同一个截止点。
+ */
+export function resolveDeadline(input) {
+  const now = Number(input && input.now) || 0;
+  const win = typeof input.bootWindowMs === "number" ? input.bootWindowMs : BOOT_WINDOW_DEFAULT_MS;
+  const quietMs = typeof input.quietMs === "number" ? input.quietMs : QUIET_DEFAULT_MS;
+  const promptSec = typeof input.promptSec === "number" ? input.promptSec : PROMPT_DEFAULT_SEC;
+  const rawBoot = input.bootUptimeSec === null || input.bootUptimeSec === undefined ? null : Number(input.bootUptimeSec);
+  const bootUptimeSec = rawBoot !== null && Number.isFinite(rawBoot) ? rawBoot : null;
+  const left = bootUptimeSec === null ? win - (Number(input.uptime) || 0) : win - bootUptimeSec * 1000;
+  return now + left + quietMs + promptSec * 1000;
+}
+
 async function bootstrap(ctx) {
   const settings = await loadSettings(ctx);
 
@@ -331,27 +349,37 @@ async function bootstrap(ctx) {
   const pollMs = settings.pollSec * 1000;
 
   const bootUptimeSec = await readBootInfo(ctx);
-  if (bootUptimeSec === null) {
-    /* 老版本客户端：沿用“应用启动后 N 分钟内”的老判断 */
-    if (!inBootWindow(bootWindowMs)) return;
-  } else if (!(bootUptimeSec * 1000 <= bootWindowMs)) {
-    return;
-  }
 
   const stored = (await ctx.storage.get(REC_KEY)) || {};
   const today = todayKey();
   if (stored.quitDate === today) return;
 
+  /* 算不算「开机自启」只由 decide 一处判定，这里只负责这个判定能管多久，到点收摊。 */
+  const deadlineAt = resolveDeadline({
+    now: Date.now(),
+    uptime: uptimeMs(),
+    bootUptimeSec: bootUptimeSec,
+    bootWindowMs: bootWindowMs,
+    quietMs: quietMs,
+    promptSec: promptSec,
+  });
+  const expired = function () { return Date.now() > deadlineAt; };
+  if (expired()) return;
+
   const wk = weekKey();
   let rec = { id: stored.id || "", week: stored.week || "" };
   let timer = null;
+  let quietTimer = null;
   let stopped = false;
   let pending = false;
 
   const stop = function () {
     stopped = true;
+    pending = false;
     if (timer !== null) { clearInterval(timer); timer = null; }
+    if (quietTimer !== null) { clearTimeout(quietTimer); quietTimer = null; }
   };
+  /* 只登记一次：stop 自己会清掉所有计时器，重试时不必再塞新的清理函数 */
   if (typeof ctx.dispose === "function") ctx.dispose(stop);
 
   const kill = function () {
@@ -363,9 +391,12 @@ async function bootstrap(ctx) {
 
   const arm = function () {
     if (pending || stopped) return;
+    if (expired()) { stop(); return; }
     pending = true;
-    const quiet = setTimeout(function () {
+    quietTimer = setTimeout(function () {
+      quietTimer = null;
       if (stopped) return;
+      if (expired()) { stop(); return; }
       if (isPlayingNow(ctx)) { pending = false; return; }
       showPrompt(promptSec, function () {
         ctx.storage.set(REC_KEY, { id: rec.id, week: rec.week, quitDate: today }).catch(function () {}).then(function () {
@@ -374,11 +405,11 @@ async function bootstrap(ctx) {
         stop();
       }, kill);
     }, quietMs);
-    if (typeof ctx.dispose === "function") ctx.dispose(function () { clearTimeout(quiet); });
   };
 
   const check = async function () {
     if (stopped || pending) return;
+    if (expired()) { stop(); return; }
     let traceId = "";
     try {
       traceId = await readTraceId(ctx);
@@ -390,7 +421,6 @@ async function bootstrap(ctx) {
       await ctx.storage.set(REC_KEY, { id: rec.id, week: rec.week, quitDate: stored.quitDate || "" }).catch(function () {});
     }
     const verdict = decide({
-      enabled: true,
       uptime: uptimeMs(),
       bootUptimeSec: bootUptimeSec,
       bootWindowMs: bootWindowMs,
@@ -407,7 +437,7 @@ async function bootstrap(ctx) {
   };
 
   await check();
-  if (!stopped && !pending) timer = setInterval(check, pollMs);
+  if (!stopped && !pending && !expired()) timer = setInterval(check, pollMs);
 }
 
 /* ---------------- 设置页 ---------------- */
@@ -415,14 +445,14 @@ async function bootstrap(ctx) {
 const ROW_STYLE = "display:flex;align-items:center;justify-content:space-between;gap:12px;padding:5px 0;";
 const LABEL_STYLE = "font-size:13.5px;";
 
-/** 三个时间项，每项三档（存储仍用秒） */
+/** 三个时间项，每项四档（存储仍用秒） */
 const OPTION_ROWS = [
   { key: "bootWindowSec", label: "开机后多久内算自启", choices: [[30, "30 秒"], [60, "1 分钟"], [300, "5 分钟"], [600, "10 分钟"]] },
   { key: "quietSec", label: "退出前静默等待", choices: [[15, "15 秒"], [30, "30 秒"], [60, "60 秒"], [90, "90 秒"]] },
   { key: "promptSec", label: "退出倒计时", choices: [[3, "3 秒"], [5, "5 秒"], [10, "10 秒"], [15, "15 秒"]] },
 ];
 
-/* 三档按钮等宽，三行上下对齐 */
+/* 四档按钮等宽，三行上下对齐 */
 const PILL_BASE = "width:64px;box-sizing:border-box;padding:5px 0;text-align:center;" +
   "border-radius:8px;font:inherit;font-size:12.5px;cursor:pointer;";
 
@@ -562,7 +592,7 @@ function mountSettings(ctx) {
   try {
     ui.settings.define({
       title: "开机自启管家",
-      description: "开机自启后先看本周期有没有签到记录：已签到且没在播放，就先等一会儿再弹卡片，无操作按设定时间退出；点「保留」或正在播放都不会退。只有开机后不久就启动的应用才算「开机自启」，白天手动打开不受影响。需在设置中开启【开机自启动】，同时开启【启动时最小化到托盘】效果更佳，体验更无感。",
+      description: "启用插件即默认开启【开机自启动】和【启动后后台运行】（启动时最小化到托盘），只设置一次，之后按你自己的开关来。开机自启后先看本周期有没有签到记录：已签到且没在播放，就先等一会儿再弹卡片，无操作按设定时间退出；点「保留」或正在播放都不会退。只有开机后不久就启动的应用才算「开机自启」，白天手动打开不受影响。需在设置中开启【开机自启动】，同时开启【启动时最小化到托盘】效果更佳，体验更无感。",
       component: Panel,
     });
   } catch (err) {
@@ -570,11 +600,66 @@ function mountSettings(ctx) {
   }
 }
 
+/* ---------------- 启用即默认开机自启 + 后台启动 ---------------- */
+
+/**
+ * 启用插件时替用户把「开机自启动」和「启动后最小化到托盘」打开。
+ * 只做一次：之后用户自己关掉就不再插手，否则每次开机激活都会把开关重新打开。
+ * 走设置 store 自己的 sync* 动作，和设置页点开关是同一条链路（主进程再落登录项）。
+ */
+async function seedAutostart(ctx) {
+  const settings = ctx && ctx.settings ? ctx.settings : null;
+  if (!settings) return false;
+  let seeded = false;
+  try {
+    const rec = await ctx.storage.get(AUTOSTART_SEEDED_KEY);
+    seeded = !!rec && rec.done === true;
+  } catch (err) {
+    seeded = false;
+  }
+  if (seeded) return false;
+  let changed = false;
+  if (settings.autoLaunch !== true) {
+    settings.autoLaunch = true;
+    changed = true;
+  }
+  if (settings.startMinimized !== true) {
+    settings.startMinimized = true;
+    changed = true;
+  }
+  try {
+    if (typeof settings.syncAutoLaunch === "function") settings.syncAutoLaunch();
+    if (typeof settings.syncStartMinimized === "function") settings.syncStartMinimized();
+  } catch (err) {
+    /* 老版本客户端没有这两个动作时只改内存值，下次打开设置页仍会同步 */
+  }
+  try {
+    await ctx.storage.set(AUTOSTART_SEEDED_KEY, { done: true });
+  } catch (err) {
+    /* 记不住就下次再补一次，不影响其它功能 */
+  }
+  if (changed) {
+    try {
+      ctx.toast.info("已开启开机自启与后台启动");
+    } catch (e) {
+      /* ignore */
+    }
+  }
+  return changed;
+}
+
 export function activate(ctx) {
   mountSettings(ctx);
-  bootstrap(ctx).catch(function () {
-    /* 静默失败，不影响应用本身 */
-  });
+  seedAutostart(ctx)
+    .catch(function () {
+      /* 静默失败，不影响应用本身 */
+    })
+    .then(function () {
+      return bootstrap(ctx);
+    })
+    .catch(function () {
+      /* 静默失败，不影响应用本身 */
+    });
 }
 
 export function deactivate() {

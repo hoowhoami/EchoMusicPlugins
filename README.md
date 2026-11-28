@@ -24,6 +24,7 @@ https://github.com/hoowhoami/EchoMusicPlugins
 - [文件授权与下载 API](docs/files-and-downloads.md)：持久目录、私有存储、流式下载/复制、恢复与本地媒体读取。
 - [任务中心 API](docs/tasks.md)：后台任务、进度、中止信号与终态保留策略。
 - [备份与恢复 API](docs/backups.md)：命令式备份操作、存储提供方注册与 WebDAV 示例。
+- [壁纸 API](docs/wallpaper.md)：动态歌词壁纸的宿主设定、帧率契约、歌词接管与只读镜像限制。
 - [Graphics 绘图 API](/docs/graphics.md)：为插件提供绘图能力。
 - [本地 Web 服务与 WebSocket](docs/web-server.md)：本机 HTTP 页面/接口，以及同一端口上的 WebSocket。
 - [TCP 网络 API](docs/tcp.md)：主进程 TCP 连接、AbortSignal、半关闭与 keepalive。
